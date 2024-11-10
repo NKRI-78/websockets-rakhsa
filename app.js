@@ -30,14 +30,17 @@ wss.on("connection", (ws, request) => {
         const parsedMessage = JSON.parse(message)
 
         switch (parsedMessage.type) {
+            case 'handle': 
+                handleSos(ws, parsedMessage)
+            break;
             case 'join':
                 handleJoin(ws, parsedMessage)
             break;
             case 'leave': 
                 handleLeave(ws, parsedMessage)
             break;
-            case 'message':
-                handleMessage(ws, parsedMessage)
+            case 'sos':
+                handleSos(ws, parsedMessage)
             break;
             case 'typing': 
                 handleTyping(parsedMessage)
@@ -48,7 +51,7 @@ wss.on("connection", (ws, request) => {
             case 'ack-read': 
                 handleAckRead(ws, parsedMessage)
             break;
-            case 'contact': 
+            case 'contact':assignActivity 
                 handleContact(ws, parsedMessage)
             break
             case 'get-chat': 
@@ -71,8 +74,32 @@ wss.on("connection", (ws, request) => {
     }
 })
 
+async function handleSos(ws, message) {
+    const { user_id, title, location } = message   
+
+    const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+
+    if(agent) {
+        agent.send(JSON.stringify({
+            type: "sos",
+            id: "1",
+            username: "Reihan Agam",
+            title: title,
+            location: location
+        }))
+    }
+
+    ws.send(JSON.stringify({
+        type: "sos",
+        title: title,
+        location: location
+    }))
+} 
+
 async function handleJoin(ws, message) {
     const { user_id } = message
+
+    console.log(`user_id ${user_id} join`)
 
     // Check if the user is already connected
     if (clients.has(user_id)) {
@@ -85,12 +112,12 @@ async function handleJoin(ws, message) {
     // Store the user's WebSocket connection
     clients.set(user_id, ws)
 
-    var data = {
-        user_id: user_id,
-        is_online: 1
-    }
+    // var data = {
+    //     user_id: user_id,
+    //     is_online: 1
+    // }
 
-    await User.assignActivity(data)
+    // await User.assignActivity(data)
 
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
@@ -105,7 +132,7 @@ async function handleLeave(_, message) {
         is_online: 0
     }
 
-    await User.assignActivity(data)
+    // await User.assignActivity(data)
   
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
@@ -320,7 +347,7 @@ async function leave(user_id) {
             is_online: 0
         }
 
-        await User.assignActivity(data)
+        // await User.assignActivity(data)
         
         socket.send(JSON.stringify({ type: 'leave', user_id: user_id }))
     }

@@ -9,9 +9,7 @@ module.exports = {
             LEFT JOIN user_onlines uo ON uo.user_id = p.user_id
             WHERE p.user_id = ?`
 
-            const values = [data.user_id]
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [data.user_id], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
@@ -24,10 +22,10 @@ module.exports = {
     assignActivity: (data) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO user_onlines (user_id, is_online, last_active) 
-            VALUES ('${data.user_id}', '${data.is_online}', NOW()) 
-            ON DUPLICATE KEY UPDATE last_active = NOW(), is_online = ${data.is_online}`
+            VALUES (?, ?, NOW()) 
+            ON DUPLICATE KEY UPDATE last_active = NOW(), is_online = ?`
 
-            conn.query(query, (e, result) => {
+            conn.query(query, [data.user_id, data.is_online, data.is_online], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {

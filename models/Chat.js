@@ -9,9 +9,7 @@ module.exports = {
             WHERE os.user_id = ?
             AND os.chat_id = ?`
 
-            const values = [userId, chatId]
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [userId, chatId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
@@ -26,9 +24,7 @@ module.exports = {
             const query = `INSERT INTO on_screens (chat_id, user_id, state) 
             VALUES (?, ?, ?)`
 
-            const values = [chatId, userId, state == "on" ? 1 : 0]
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [chatId, userId, state == "on" ? 1 : 0], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
@@ -43,9 +39,7 @@ module.exports = {
             const query = `UPDATE messages SET ack = 1
             WHERE chat_id = ? AND receiver_id = ?`
 
-            const values = [chatId, userId, userId]
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [chatId, userId, userId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
@@ -59,9 +53,7 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const query = `UPDATE on_screens SET state = ? WHERE chat_id = ? AND user_id = ?`
 
-            const values = [state == "on" ? 1 : 0, chatId, userId]
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [state == "on" ? 1 : 0, chatId, userId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
