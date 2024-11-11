@@ -121,7 +121,7 @@ async function handleConfirmSos(ws, message) {
     var senderId = sos[0].user_id
     var userAgentId = user_agent_id
 
-    var chatId = uuidv4()
+    const chatId = uuidv4()
       
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
