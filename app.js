@@ -9,7 +9,7 @@ const express = require('express')
 const moment = require('moment')
 
 const Chat = require("./models/Chat")
-
+const Sos = require("./models/Sos")
 const User = require("./models/User")
 
 const app = express()
@@ -75,25 +75,37 @@ wss.on("connection", (ws, request) => {
 })
 
 async function handleSos(ws, message) {
-    const { user_id, title, location } = message   
+    const { user_id, title, location, country } = message   
 
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
+    const sender = await User.getProfile(user_id)
+
     if(agent) {
+
+        var sosId = uuidv4()
+
+        var time = moment().format("HH:mm:ss");
+        
+        await Sos.broadcast(
+            sosId, 
+            user_id,
+            title, 
+            location,
+            country,
+            time
+        )
+
         agent.send(JSON.stringify({
             type: "sos",
-            id: "1",
-            username: "Reihan Agam",
+            id: sosId,
+            username: sender.length == 0 
+            ? '-' 
+            : sender[0].username,
             title: title,
             location: location
         }))
     }
-
-    ws.send(JSON.stringify({
-        type: "sos",
-        title: title,
-        location: location
-    }))
 } 
 
 async function handleJoin(ws, message) {
