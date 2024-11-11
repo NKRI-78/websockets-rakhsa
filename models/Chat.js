@@ -314,9 +314,9 @@ module.exports = {
     insertChat: (chatId, sender, recipient) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO chats (uid, sender_id, receiver_id) 
-            VALUES ('${chatId}', '${sender}', '${recipient}')`
+            VALUES (?, ?, ?)`
 
-            conn.query(query, (e, result) => {
+            conn.query(query, [chatId, sender, recipient], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {

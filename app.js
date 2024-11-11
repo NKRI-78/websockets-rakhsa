@@ -122,17 +122,18 @@ async function handleConfirmSos(ws, message) {
     var userAgentId = user_agent_id
 
     var chatId = uuidv4()
-
-    await Chat.insertChat(chatId, senderId, userAgentId)
-
-    await Sos.approvalConfirm(sos_id, userAgentId)
-    
+      
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
             "type": "confirm-sos",
             "chat_id": chatId
         }))
     }
+
+    await Chat.insertChat(chatId, senderId, userAgentId)
+
+    await Sos.approvalConfirm(sos_id, userAgentId)
+  
 }
 
 async function handleJoin(ws, message) {
