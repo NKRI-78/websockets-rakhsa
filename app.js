@@ -42,6 +42,9 @@ wss.on("connection", (ws, request) => {
             case 'sos':
                 handleSos(ws, parsedMessage)
             break;
+            case 'confirm-sos': 
+                handleConfirmSos(ws, parsedMessage)
+            break;
             case 'typing': 
                 handleTyping(parsedMessage)
             break;
@@ -104,9 +107,33 @@ async function handleSos(ws, message) {
             location: location,
             time: time
         }))
-        
+
     }
 } 
+
+async function handleConfirmSos(ws, message) { 
+    const { sos_id, user_agent_id } = message
+
+    const sos = await Sos.findById(sos_id)
+
+    const broadcastToSender = clients.get(sos[0].user_id)
+
+    var senderId = sos[0].user_id
+    var userAgentId = user_agent_id
+
+    var chatId = uuidv4()
+
+    await Chat.insertChat(chatId, senderId, userAgentId)
+
+    await Sos.approvalConfirm(sos_id, userAgentId)
+    
+    if(broadcastToSender) {
+        broadcastToSender.send(JSON.stringify({
+            "type": "confirm-sos",
+            "chat_id": chatId
+        }))
+    }
+}
 
 async function handleJoin(ws, message) {
     const { user_id } = message
