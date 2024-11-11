@@ -75,7 +75,7 @@ wss.on("connection", (ws, request) => {
 })
 
 async function handleSos(ws, message) {
-    const { user_id, title, location, country } = message   
+    const { user_id, location, country } = message   
 
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
@@ -85,12 +85,11 @@ async function handleSos(ws, message) {
 
         var sosId = uuidv4()
 
-        var time = moment().format("HH:mm:ss");
+        var time = moment().format("HH:mm");
         
         await Sos.broadcast(
             sosId, 
             user_id,
-            title, 
             location,
             country,
             time
@@ -102,9 +101,10 @@ async function handleSos(ws, message) {
             username: sender.length == 0 
             ? '-' 
             : sender[0].username,
-            title: title,
-            location: location
+            location: location,
+            time: time
         }))
+        
     }
 } 
 
