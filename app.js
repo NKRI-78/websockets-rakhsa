@@ -145,14 +145,13 @@ async function handleJoin(ws, message) {
     console.log(`user_id ${user_id} join`)
 
     // Check if the user is already connected
-    if (clients.has(user_id)) {
-      // Close the connection to prevent duplicate connections
-      ws.send(JSON.stringify({ type: 'error', message: 'User already connected.' }))
-      ws.close()
-      return
-    }
+    // if (clients.has(user_id)) {
+    //   // Close the connection to prevent duplicate connections
+    //   ws.send(JSON.stringify({ type: 'error', message: 'User already connected.' }))
+    //   ws.close()
+    //   return
+    // }
   
-    // Store the user's WebSocket connection
     clients.set(user_id, ws)
 
     // var data = {
