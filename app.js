@@ -39,6 +39,9 @@ wss.on("connection", (ws, request) => {
             case 'leave': 
                 handleLeave(ws, parsedMessage)
             break;
+            case 'message': 
+                handleMessage(ws, parsedMessage) 
+            break;
             case 'sos':
                 handleSos(ws, parsedMessage)
             break;
@@ -244,9 +247,8 @@ async function handleGetChat(ws, message) {
 }
 
 async function handleMessage(ws, message) {
-    const { sender, recipient, text } = message
+    const { chat_id, sender, recipient, text } = message
 
-    var chatId = uuidv4()
     var msgId = uuidv4()
 
     var dataSender = {
@@ -258,24 +260,10 @@ async function handleMessage(ws, message) {
     }
 
     var userSenders = await User.getProfile(dataSender)
-
     var userRecipients = await User.getProfile(dataRecipient)
 
-    var conversations = await Chat.checkConversation(sender, recipient)
-
-    if(conversations.length == 0) {
-        await Chat.insertChat(chatId, sender, recipient)
-    } else {
-        chatId = conversations[0].uid
-    }
-
-    var recipients = await Chat.checkOnScreen(chatId, recipient)
-
-    var ack =  recipients.length == 0 ? 2 : recipients[0].state == 1 ? 1 : 2
-
-    await Chat.insertMessage(msgId, chatId, sender, recipient, text, ack)
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text, ack)
   
-    // Check if the recipient is connected
     const recipientSocket = clients.get(recipient)
 
     if (recipientSocket) {
@@ -285,17 +273,17 @@ async function handleMessage(ws, message) {
                 type: "message",
                 data: {
                     id: msgId,
-                    chat_id: chatId,
+                    chat_id: chat_id,
                     user: {
                         id: userRecipients.length == 0 ? "-" : userRecipients[0].user_id,
-                        name: userRecipients.length == 0 ? "-" : userRecipients[0].name, 
+                        name: userRecipients.length == 0 ? "-" : userRecipients[0].username, 
                         avatar: userRecipients.length == 0 ? "-" : userRecipients[0].avatar,
                         is_me: false,
                     },
                     sender: {
                         id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
                     },
-                    is_read: recipients.length == 0 ? false : recipients[0].state == 1 ? true : false,
+                    is_read: true,
                     sent_time: moment().format('HH:mm'),
                     text: text,
                     type: "text"
@@ -310,23 +298,22 @@ async function handleMessage(ws, message) {
     
     }
 
-    // Send the message back to the sender
     ws.send(
         JSON.stringify({ 
             type: "message",
             data: {
                 id: msgId,
-                chat_id: chatId,
+                chat_id: chat_id,
                 user: {
                     id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
-                    name: userSenders.length == 0 ? "-" : userSenders[0].name, 
+                    name: userSenders.length == 0 ? "-" : userSenders[0].username, 
                     avatar: userSenders.length == 0 ? "-" : userSenders[0].avatar,
                     is_me: true,
                 },
                 sender: {
                     id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
                 },
-                is_read: recipients.length == 0 ? false : recipients[0].state == 1 ? true : false,
+                is_read: true,
                 sent_time: moment().format('HH:mm'),
                 text: text,
                 type: "text"
