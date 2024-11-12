@@ -25,6 +25,7 @@ module.exports = {
 
             conn.query(query, [sosId, userId, "Emergency", location, country, time], (e, result) => {
                 if(e) {
+                    console.log(e)
                     reject(new Error(e))
                 } else {
                     resolve(result)

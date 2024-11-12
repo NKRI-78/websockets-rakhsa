@@ -87,11 +87,13 @@ async function handleSos(ws, message) {
 
     const sender = await User.getProfile(user_id)
 
+    var sosId = uuidv4()
+
     if(agent) {
 
-        var sosId = uuidv4()
-
         var time = moment().format("HH:mm");
+
+        var username = sender.length == 0 ? '-' : sender[0].username
         
         await Sos.broadcast(
             sosId, 
@@ -104,12 +106,20 @@ async function handleSos(ws, message) {
         agent.send(JSON.stringify({
             type: "sos",
             id: sosId,
-            username: sender.length == 0 
-            ? '-' 
-            : sender[0].username,
+            username: username,
             location: location,
             time: time
         }))
+
+    } else {
+
+        await Sos.broadcast(
+            sosId, 
+            user_id,
+            location,
+            country,
+            time
+        )
 
     }
 } 
@@ -144,22 +154,7 @@ async function handleJoin(ws, message) {
 
     console.log(`user_id ${user_id} join`)
 
-    // Check if the user is already connected
-    // if (clients.has(user_id)) {
-    //   // Close the connection to prevent duplicate connections
-    //   ws.send(JSON.stringify({ type: 'error', message: 'User already connected.' }))
-    //   ws.close()
-    //   return
-    // }
-  
     clients.set(user_id, ws)
-
-    // var data = {
-    //     user_id: user_id,
-    //     is_online: 1
-    // }
-
-    // await User.assignActivity(data)
 
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
@@ -169,13 +164,6 @@ async function handleJoin(ws, message) {
 async function handleLeave(_, message) {
     const { user_id } = message
 
-    var data = {
-        user_id: user_id,
-        is_online: 0
-    }
-
-    // await User.assignActivity(data)
-  
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
     }
