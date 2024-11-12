@@ -150,7 +150,12 @@ async function handleConfirmSos(ws, message) {
     await Chat.insertChat(chatId, senderId, userAgentId)
 
     await Sos.approvalConfirm(sos_id, userAgentId)
-  
+
+    ws.send(JSON.stringify({
+        "type": "confirm-sos",
+        "chat_id": chatId,
+        "recipient_id": user_agent_id
+    }))
 }
 
 async function handleJoin(ws, message) {
