@@ -142,7 +142,8 @@ async function handleConfirmSos(ws, message) {
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
             "type": "confirm-sos",
-            "chat_id": chatId
+            "chat_id": chatId,
+            "recipient_id": user_agent_id
         }))
     }
 
@@ -252,7 +253,7 @@ async function handleMessage(ws, message) {
     var userSenders = await User.getProfile(dataSender)
     var userRecipients = await User.getProfile(dataRecipient)
 
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text, ack)
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
   
     const recipientSocket = clients.get(recipient)
 
