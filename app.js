@@ -143,6 +143,7 @@ async function handleConfirmSos(ws, message) {
         broadcastToSender.send(JSON.stringify({
             "type": "confirm-sos",
             "chat_id": chatId,
+            "sender_id": senderId,
             "recipient_id": user_agent_id
         }))
     }
@@ -154,6 +155,7 @@ async function handleConfirmSos(ws, message) {
     ws.send(JSON.stringify({
         "type": "confirm-sos",
         "chat_id": chatId,
+        "sender_id": senderId,
         "recipient_id": user_agent_id,
         "is_confirm": true
     }))
