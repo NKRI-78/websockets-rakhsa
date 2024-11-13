@@ -17,13 +17,13 @@ module.exports = {
         })
     },
 
-    broadcast: (sosId, userId, location, lat, lng, country, time) => {
+    broadcast: (sosId, userId, media, location, lat, lng, country, time) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO sos
             (uid, user_id, title, location, lat, lng, country, time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-            conn.query(query, [sosId, userId, "Emergency", location, lat, lng, country, time], (e, result) => {
+            conn.query(query, [sosId, userId, media, "Emergency", location, lat, lng, country, time], (e, result) => {
                 if(e) {
                     console.log(e)
                     reject(new Error(e))
