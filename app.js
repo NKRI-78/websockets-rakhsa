@@ -81,7 +81,7 @@ wss.on("connection", (ws, request) => {
 })
 
 async function handleSos(ws, message) {
-    const { user_id, media, location, lat, lng, country, time } = message   
+    const { user_id, media, ext, location, lat, lng, country, time } = message   
 
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
@@ -89,8 +89,15 @@ async function handleSos(ws, message) {
 
     var sosId = uuidv4()
 
-    if(agent) {
+    var sosType
 
+    if(ext == "jpg") {
+        sosType = 1
+    } else {
+        sosType = 2 
+    }
+
+    if(agent) {
 
         var username = sender.length == 0 ? "-" : sender[0].username
         
@@ -99,6 +106,7 @@ async function handleSos(ws, message) {
             user_id,
             location,
             media,
+            sosType,
             lat, 
             lng,
             country,
@@ -121,6 +129,7 @@ async function handleSos(ws, message) {
             user_id,
             location,
             media,
+            sosType,
             lat,
             lng,
             country,
