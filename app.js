@@ -97,8 +97,8 @@ async function handleSos(ws, message) {
         await Sos.broadcast(
             sosId, 
             user_id,
-            media,
             location,
+            media,
             lat, 
             lng,
             country,
