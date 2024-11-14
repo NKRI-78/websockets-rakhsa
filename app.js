@@ -88,8 +88,6 @@ async function handleSos(ws, message) {
 
     const sender = await User.getProfile(user_id)
 
-
-    
     // const receiver = await User.getUser("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
     // const kbri = await Kbri.userKbri("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
@@ -196,6 +194,12 @@ async function handleJoin(ws, message) {
     const { user_id } = message
 
     console.log(`user_id ${user_id} join`)
+
+   if (clients.has(user_id)) {
+        const existingConnection = clients.get(user_id)
+        existingConnection.close(1000, "Reconnecting")
+        console.log(`Closed existing connection for client ${user_id}`)
+    }
 
     clients.set(user_id, ws)
 
@@ -398,14 +402,6 @@ function handleDisconnect(ws) {
 
 async function leave(user_id) {
     for (const socket of clients.values()) {
-
-        var data = {
-            user_id: user_id,
-            is_online: 0
-        }
-
-        // await User.assignActivity(data)
-        
         socket.send(JSON.stringify({ type: 'leave', user_id: user_id }))
     }
 }
