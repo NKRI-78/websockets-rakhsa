@@ -195,12 +195,24 @@ async function handleJoin(ws, message) {
 
     console.log(`user_id ${user_id} join`)
 
-   if (clients.has(user_id)) {
-        const existingConnection = clients.get(user_id)
-        existingConnection.close(1000, "Reconnecting")
-        console.log(`Closed existing connection for client ${user_id}`)
-    }
+    if (clients.has(user_id)) {
+        const oldConnection = clients.get(user_id);
 
+        // Send a close message and terminate the old connection
+        try {
+            oldConnection.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }));
+            oldConnection.terminate();
+        } catch (error) {
+            console.error("Error terminating old connection:", error);
+        }
+
+        // Remove from client map and clear session data
+        clients.delete(user_id);
+
+        // Log the replacement for monitoring purposes
+        console.log(`Old connection for client ${user_id} replaced by new connection.`);
+    }
+    
     clients.set(user_id, ws)
 
     for (const socket of clients.values()) {
