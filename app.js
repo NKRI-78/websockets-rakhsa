@@ -158,9 +158,10 @@ async function handleConfirmSos(ws, message) {
 
     const sos = await Sos.findById(sos_id)
 
-    const broadcastToSender = clients.get("64cdba1f-01ca-464d-a7d4-5c109de0a251")
-
     var senderId = sos[0].user_id
+
+    const broadcastToSender = clients.get(senderId)
+
     var userAgentId = user_agent_id
 
     const chatId = uuidv4()
