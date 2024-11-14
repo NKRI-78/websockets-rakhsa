@@ -87,6 +87,7 @@ async function handleSos(ws, message) {
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
     const sender = await User.getProfile(user_id)
+    
     // const receiver = await User.getUser("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
     // const kbri = await Kbri.userKbri("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
