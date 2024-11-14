@@ -11,6 +11,7 @@ const moment = require('moment')
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
 const User = require("./models/User")
+const Kbri = require("./models/Kbri")
 
 const app = express()
 
@@ -86,6 +87,14 @@ async function handleSos(ws, message) {
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
     const sender = await User.getProfile(user_id)
+    const receiver = await User.getUser("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+
+    const kbri = await Kbri.userKbri("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+
+    var agentId = receiver.length == 0 ? "-" : receiver[0].user_id
+    var agentName = receiver.length == 0 ? "-" : receiver[0].username
+
+    var continent = kbri.length == 0 ? "-" : kbri[0].continent_name
 
     var sosId = uuidv4()
 
@@ -117,9 +126,16 @@ async function handleSos(ws, message) {
             type: "sos",
             id: sosId,
             username: username,
-            location: location,
             media: media,
-            time: time
+            country: country,
+            location: location,
+            time: time,
+            lat: lat, 
+            lng: lng,
+            continent: continent,
+            agent_id: agentId,
+            agent_name: agentName,
+            is_confirm: false,
         }))
 
     } else {
