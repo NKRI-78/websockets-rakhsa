@@ -87,6 +87,8 @@ async function handleSos(ws, message) {
     const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
     const sender = await User.getProfile(user_id)
+
+
     
     // const receiver = await User.getUser("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
 
@@ -158,7 +160,7 @@ async function handleConfirmSos(ws, message) {
 
     const sos = await Sos.findById(sos_id)
 
-    const broadcastToSender = clients.get(sos[0].user_id)
+    const broadcastToSender = clients.get("64cdba1f-01ca-464d-a7d4-5c109de0a251")
 
     var senderId = sos[0].user_id
     var userAgentId = user_agent_id
