@@ -128,6 +128,9 @@ async function handleSos(ws, message) {
             id: sosId,
             username: username,
             media: media,
+            media_type: sosType == 1 
+            ? "image" 
+            : "video",
             country: country,
             location: location,
             time: time,
