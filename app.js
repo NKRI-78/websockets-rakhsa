@@ -11,7 +11,7 @@ const moment = require('moment')
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
 const User = require("./models/User")
-const Kbri = require("./models/Kbri")
+// const Kbri = require("./models/Kbri")
 
 const app = express()
 
