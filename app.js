@@ -167,7 +167,7 @@ async function handleConfirmSos(ws, message) {
 
     var userAgentId = user_agent_id
 
-    const chatId = uuidv4()
+    var chatId = uuidv4()
       
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
@@ -180,7 +180,19 @@ async function handleConfirmSos(ws, message) {
         }))
     }
 
-    await Chat.insertChat(chatId, senderId, userAgentId)
+    var checkConversation = await Chat.checkConversation(senderId, userAgentId)
+
+    if(checkConversation.length == 0) {
+
+        await Chat.insertChat(chatId, senderId, userAgentId)
+
+    } else {
+
+        chatId = await checkConversation.length == 0 
+        ? '-' 
+        : checkConversation[0].uid 
+
+    }
 
     await Sos.approvalConfirm(sos_id, userAgentId)
 
