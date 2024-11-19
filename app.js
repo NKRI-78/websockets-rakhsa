@@ -344,7 +344,7 @@ async function handleMessage(ws, message) {
                         id: senderId,
                     },
                     is_read: true,
-                    sent_time: moment().local().format('HH:mm'),
+                    sent_time: moment().utc().local().format('HH:mm'),
                     text: text,
                     type: "text"
                 }
@@ -374,7 +374,7 @@ async function handleMessage(ws, message) {
                     id: senderId,
                 },
                 is_read: true,
-                sent_time: moment().local().format('HH:mm'),
+                sent_time: moment().utc().local().format('HH:mm'),
                 text: text,
                 type: "text"
             }
