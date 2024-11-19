@@ -6,7 +6,7 @@ const { createServer } = require('http')
 const WebSocketServer = require('ws')
 
 const express = require('express')
-const moment = require('moment')
+const moment = require('moment-timezone')
 
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
@@ -95,8 +95,6 @@ async function handleSos(ws, message) {
  
         const agentRecipient = clients.get(agent.user_id)
 
-        console.log(agentRecipient)
-
         const sender = await User.getProfile(user_id)
 
         var sosId = uuidv4()
@@ -109,19 +107,19 @@ async function handleSos(ws, message) {
             sosType = 2 
         }
 
-        await Sos.broadcast(
-            sosId, 
-            user_id,
-            location,
-            media,
-            sosType,
-            lat, 
-            lng,
-            country,
-            time
-        )
+        if(typeof agentRecipient != "undefined") {
 
-        if(agentRecipient) {
+            await Sos.broadcast(
+                sosId, 
+                user_id,
+                location,
+                media,
+                sosType,
+                lat, 
+                lng,
+                country,
+                time
+            )
 
             var username = sender.length == 0 ? "-" : sender[0].username
             
