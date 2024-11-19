@@ -314,6 +314,14 @@ async function handleMessage(ws, message) {
     var userSenders = await User.getProfile(dataSender)
     var userRecipients = await User.getProfile(dataRecipient)
 
+    var senderId = userSenders.length == 0 ? "-" : userSenders[0].user_id
+    var senderName = userSenders.length == 0 ? "-" : userSenders[0].username
+    var senderAvatar = userSenders.length == 0 ? "-" : userSenders[0].avatar
+
+    var recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id
+    var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
+    var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
+
     await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
   
     const recipientSocket = clients.get(recipient)
@@ -327,16 +335,16 @@ async function handleMessage(ws, message) {
                     id: msgId,
                     chat_id: chat_id,
                     user: {
-                        id: userRecipients.length == 0 ? "-" : userRecipients[0].user_id,
-                        name: userRecipients.length == 0 ? "-" : userRecipients[0].username, 
-                        avatar: userRecipients.length == 0 ? "-" : userRecipients[0].avatar,
+                        id: recipientId,
+                        name: recipientName, 
+                        avatar: recipientAvatar,
                         is_me: false,
                     },
                     sender: {
-                        id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
+                        id: senderId,
                     },
                     is_read: true,
-                    sent_time: moment().format('HH:mm'),
+                    sent_time: moment().local().format('HH:mm'),
                     text: text,
                     type: "text"
                 }
@@ -357,16 +365,16 @@ async function handleMessage(ws, message) {
                 id: msgId,
                 chat_id: chat_id,
                 user: {
-                    id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
-                    name: userSenders.length == 0 ? "-" : userSenders[0].username, 
-                    avatar: userSenders.length == 0 ? "-" : userSenders[0].avatar,
+                    id: senderId,
+                    name: senderName, 
+                    avatar: senderAvatar,
                     is_me: true,
                 },
                 sender: {
-                    id: userSenders.length == 0 ? "-" : userSenders[0].user_id,
+                    id: senderId,
                 },
                 is_read: true,
-                sent_time: moment().format('HH:mm'),
+                sent_time: moment().local().format('HH:mm'),
                 text: text,
                 type: "text"
             }
