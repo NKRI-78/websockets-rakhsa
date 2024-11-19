@@ -11,6 +11,8 @@ const moment = require('moment')
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
 const User = require("./models/User")
+const utils = require("./helpers/utils")
+const Agent = require("./models/Agent")
 // const Kbri = require("./models/Kbri")
 
 const app = express()
@@ -84,33 +86,29 @@ wss.on("connection", (ws, request) => {
 async function handleSos(ws, message) {
     const { user_id, media, ext, location, lat, lng, country, time } = message   
 
-    const agent = clients.get("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+    var continent = utils.countryCompareContinent("Japan")
 
-    const sender = await User.getProfile(user_id)
+    var agents = await Agent.userAgent(continent)
 
-    // const receiver = await User.getUser("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+    for (var i in agents) {
+        var agent = agents[i]
+ 
+        const agentRecipient = clients.get(agent.user_id)
 
-    // const kbri = await Kbri.userKbri("0f9815b3-01a2-4350-8679-2e9b8b1637b7")
+        console.log(agentRecipient)
 
-    // var agentId = receiver.length == 0 ? "-" : receiver[0].user_id
-    // var agentName = receiver.length == 0 ? "-" : receiver[0].username
+        const sender = await User.getProfile(user_id)
 
-    // var continent = kbri.length == 0 ? "-" : kbri[0].continent_name
+        var sosId = uuidv4()
 
-    var sosId = uuidv4()
+        var sosType
 
-    var sosType
+        if(ext == "jpg") {
+            sosType = 1
+        } else {
+            sosType = 2 
+        }
 
-    if(ext == "jpg") {
-        sosType = 1
-    } else {
-        sosType = 2 
-    }
-
-    if(agent) {
-
-        var username = sender.length == 0 ? "-" : sender[0].username
-        
         await Sos.broadcast(
             sosId, 
             user_id,
@@ -123,35 +121,27 @@ async function handleSos(ws, message) {
             time
         )
 
-        agent.send(JSON.stringify({
-            type: "sos",
-            id: sosId,
-            username: username,
-            media: media,
-            media_type: sosType == 1 
-            ? "image" 
-            : "video",
-            country: country,
-            location: location,
-            time: time,
-            lat: lat, 
-            lng: lng,
-            is_confirm: false,
-        }))
+        if(agentRecipient) {
 
-    } else {
+            var username = sender.length == 0 ? "-" : sender[0].username
+            
+            agentRecipient.send(JSON.stringify({
+                type: "sos",
+                id: sosId,
+                username: username,
+                media: media,
+                media_type: sosType == 1 
+                ? "image" 
+                : "video",
+                country: country,
+                location: location,
+                time: time,
+                lat: lat, 
+                lng: lng,
+                is_confirm: false,
+            }))
 
-        await Sos.broadcast(
-            sosId, 
-            user_id,
-            location,
-            media,
-            sosType,
-            lat,
-            lng,
-            country,
-            time
-        )
+        } 
 
     }
 } 

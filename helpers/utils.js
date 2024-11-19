@@ -1,4 +1,3 @@
-const bcrypt = require("bcryptjs")
 const moment = require('moment')
 
 moment.updateLocale('id', {
@@ -21,6 +20,22 @@ moment.updateLocale('id', {
 })
   
 module.exports = {
+
+    
+    countryCompareContinent(country) {
+        var val = ""
+        
+        switch(country.trim().toLowerCase()) {
+            case "unitedstates": 
+                val = "Amerika Utara"
+            break;
+            case "japan": 
+                val = "Asia"
+            break;
+        }
+
+        return val
+    },  
 
     fdate: (date) => {
         return moment(date).locale('id').format('dddd, d MMMM YYYY')
@@ -68,17 +83,6 @@ module.exports = {
         return String(email)
         .toLowerCase()
         .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/)
-    },
-
-    encryptPassword: async (password) => {
-        const salt = await bcrypt.genSalt(10)
-        var passwordHash = await bcrypt.hash(password, salt)
-        return passwordHash
-    },
-
-    checkPasswordEncrypt: async(password, passwordOld) => {
-        var isValid = await bcrypt.compare(password, passwordOld)
-        return isValid
     },
 
 }
