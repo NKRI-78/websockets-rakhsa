@@ -168,18 +168,7 @@ async function handleConfirmSos(ws, message) {
     var userAgentId = user_agent_id
 
     var chatId = uuidv4()
-      
-    if(broadcastToSender) {
-        broadcastToSender.send(JSON.stringify({
-            "type": "confirm-sos",
-            "sos_id": sos_id,
-            "chat_id": chatId,
-            "sender_id": senderId,
-            "recipient_id": user_agent_id,
-            "is_confirm": true
-        }))
-    }
-
+    
     var checkConversation = await Chat.checkConversation(senderId, userAgentId)
 
     if(checkConversation.length == 0) {
@@ -192,6 +181,17 @@ async function handleConfirmSos(ws, message) {
         ? '-' 
         : checkConversation[0].uid 
 
+    }
+      
+    if(broadcastToSender) {
+        broadcastToSender.send(JSON.stringify({
+            "type": "confirm-sos",
+            "sos_id": sos_id,
+            "chat_id": chatId,
+            "sender_id": senderId,
+            "recipient_id": user_agent_id,
+            "is_confirm": true
+        }))
     }
 
     await Sos.approvalConfirm(sos_id, userAgentId)
