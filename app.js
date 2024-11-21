@@ -51,6 +51,9 @@ wss.on("connection", (ws, request) => {
             case 'confirm-sos': 
                 handleConfirmSos(ws, parsedMessage)
             break;
+            case 'finish-sos': 
+                handleFinishSos(parsedMessage)
+            break;
             case 'typing': 
                 handleTyping(parsedMessage)
             break;
@@ -192,6 +195,22 @@ async function handleConfirmSos(ws, message) {
         "recipient_id": user_agent_id,
         "is_confirm": true
     }))
+}
+
+async function handleFinishSos(message) {
+    const { id } = message
+
+    var sos = await Sos.findById(id)
+
+    var userId = sos.length == 0 ? "-" : sos[0].user_id
+
+    var recipient = clients.get(userId)
+
+    if(recipient) {
+        recipient.send(JSON.stringify({
+            "type": "finish-sos",
+        }))
+    }
 }
 
 async function handleJoin(ws, message) {
