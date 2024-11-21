@@ -198,9 +198,9 @@ async function handleConfirmSos(ws, message) {
 }
 
 async function handleFinishSos(message) {
-    const { id } = message
+    const { sos_id } = message
 
-    var sos = await Sos.findById(id)
+    var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_id
 
