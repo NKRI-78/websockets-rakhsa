@@ -86,8 +86,8 @@ wss.on("connection", (ws, request) => {
     }
 })
 
-async function handleSos(ws, message) {
-    const { user_id, media, ext, location, lat, lng, country, time } = message   
+async function handleSos(_, message) {
+    const { sos_id, user_id, media, ext, location, lat, lng, country, time } = message   
 
     var continent = utils.countryCompareContinent("Japan")
 
@@ -100,8 +100,6 @@ async function handleSos(ws, message) {
 
         const sender = await User.getProfile(user_id)
 
-        var sosId = uuidv4()
-
         var sosType
 
         if(ext == "jpg") {
@@ -113,7 +111,7 @@ async function handleSos(ws, message) {
         if(typeof agentRecipient != "undefined") {
 
             await Sos.broadcast(
-                sosId, 
+                sos_id, 
                 user_id,
                 location,
                 media,
@@ -128,7 +126,7 @@ async function handleSos(ws, message) {
             
             agentRecipient.send(JSON.stringify({
                 type: "sos",
-                id: sosId,
+                id: sos_id,
                 username: username,
                 media: media,
                 media_type: sosType == 1 
