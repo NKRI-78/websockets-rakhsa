@@ -5,7 +5,7 @@ module.exports = {
 
     findById: (sosId) => {
         return new Promise((resolve, reject) => {
-            const query = `SELECT user_id FROM sos WHERE uid = ?`
+            const query = `SELECT user_id, user_agent_id FROM sos WHERE uid = ?`
 
             conn.query(query, [sosId], (e, result) => {
                 if(e) {

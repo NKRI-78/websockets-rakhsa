@@ -65,6 +65,9 @@ wss.on("connection", (ws, request) => {
             case 'finish-sos': 
                 handleFinishSos(parsedMessage)
             break;
+            case 'user-finish-sos': 
+                handleUserFinishSos(parsedMessage)
+            break;
             case 'typing': 
                 handleTyping(parsedMessage)
             break;
@@ -221,6 +224,22 @@ async function handleFinishSos(message) {
         }))
     }
 }
+
+async function handleUserFinishSos(message) {
+    const { sos_id } = message
+
+    var sos = await Sos.findById(sos_id)
+
+    var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
+
+    var recipient = clients.get(userId)
+
+    if(recipient) {
+        recipient.send(JSON.stringify({
+            "type": "user-finish-sos",
+        }))
+    }
+ }
 
 async function handleJoin(ws, message) {
     const { user_id } = message
