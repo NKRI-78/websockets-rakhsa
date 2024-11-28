@@ -112,7 +112,7 @@ async function handleSos(_, message) {
  
         const agentRecipient = clients.get(agent.user_id)
 
-        const platformType = platform_type == "raksha" ? 1 : 0
+        const platformType = platform_type == "raksha" ? 1 : 2
 
         const sender = await User.getProfile(user_id)
 
