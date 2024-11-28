@@ -15,6 +15,8 @@ const utils = require("./helpers/utils")
 const Agent = require("./models/Agent")
 // const Kbri = require("./models/Kbri")
 
+const PING_INTERVAL = 5000; // 5 seconds
+
 const app = express()
 
 const server = createServer(app)
@@ -28,11 +30,22 @@ wss.on("connection", (ws, request) => {
 
     console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
 
+    // Add a `isAlive` property to track the connection status
+    ws.isAlive = true;
+
+    // Respond to pong messages
+    ws.on("pong", () => {
+        ws.isAlive = true;
+    });
+
     ws.on("message", message => {
 
         const parsedMessage = JSON.parse(message)
 
         switch (parsedMessage.type) {
+            case 'ping':
+                ws.send(JSON.stringify({ type: "pong" }));
+            break;
             case 'handle': 
                 handleSos(ws, parsedMessage)
             break;
@@ -416,6 +429,19 @@ async function handleContact(ws, message) {
 
     ws.send(JSON.stringify({type: 'contact', users}))
 }
+
+// Ping all connected clients periodically
+setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (!ws.isAlive) {
+            console.log("Terminating a dead connection");
+            return ws.terminate(); // Close the connection if no pong received
+        }
+
+        ws.isAlive = false;
+        ws.ping(); // Send a ping
+    });
+}, PING_INTERVAL);
 
 function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
