@@ -63,7 +63,7 @@ wss.on("connection", (ws, request) => {
                 handleConfirmSos(ws, parsedMessage)
             break;
             case 'finish-sos': 
-                handleFinishSos(parsedMessage)
+                handleFinishSos(ws, parsedMessage)
             break;
             case 'user-finish-sos': 
                 handleUserFinishSos(parsedMessage)
@@ -209,7 +209,7 @@ async function handleConfirmSos(ws, message) {
     }))
 }
 
-async function handleFinishSos(message) {
+async function handleFinishSos(ws, message) {
     const { sos_id } = message
 
     var sos = await Sos.findById(sos_id)
@@ -223,6 +223,10 @@ async function handleFinishSos(message) {
             "type": "finish-sos",
         }))
     }
+
+    ws.send(JSON.stringify({
+        "type": "finish-sos",
+    }))
 }
 
 async function handleUserFinishSos(message) {
