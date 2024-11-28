@@ -30,10 +30,8 @@ wss.on("connection", (ws, request) => {
 
     console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
 
-    // Add a `isAlive` property to track the connection status
     ws.isAlive = true;
 
-    // Respond to pong messages
     ws.on("pong", () => {
         ws.isAlive = true;
     });
@@ -230,12 +228,12 @@ async function handleJoin(ws, message) {
     console.log(`user_id ${user_id} join`)
 
     if (clients.has(user_id)) {
-        const oldConnection = clients.get(user_id)
+        const oldConn = clients.get(user_id)
 
         // Send a close message and terminate the old connection
         try {
-            oldConnection.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
-            oldConnection.terminate()
+            oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
+            oldConn.terminate()
         } catch (error) {
             console.error("Error terminating old connection:", error)
         }
