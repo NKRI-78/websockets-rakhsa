@@ -15,7 +15,7 @@ const utils = require("./helpers/utils")
 const Agent = require("./models/Agent")
 // const Kbri = require("./models/Kbri")
 
-const PING_INTERVAL = 5000; // 5 seconds
+const PING_INTERVAL = 5000
 
 const app = express()
 
@@ -101,7 +101,7 @@ wss.on("connection", (ws, request) => {
 })
 
 async function handleSos(_, message) {
-    const { sos_id, user_id, media, ext, location, lat, lng, country, time } = message   
+    const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message   
 
     var continent = utils.countryCompareContinent("Japan")
 
@@ -111,6 +111,8 @@ async function handleSos(_, message) {
         var agent = agents[i]
  
         const agentRecipient = clients.get(agent.user_id)
+
+        const platformType = platform_type == "raksha" ? 1 : 0
 
         const sender = await User.getProfile(user_id)
 
@@ -133,7 +135,8 @@ async function handleSos(_, message) {
                 lat, 
                 lng,
                 country,
-                time
+                time,
+                platformType
             )
 
             var username = sender.length == 0 ? "-" : sender[0].username
@@ -152,6 +155,7 @@ async function handleSos(_, message) {
                 lat: lat, 
                 lng: lng,
                 is_confirm: false,
+                platform_type: platform_type
             }))
 
         } 
