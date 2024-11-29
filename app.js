@@ -107,65 +107,65 @@ async function handleSos(_, message) {
     var agents = await Agent.userAgent(continent)
 
     // Get all connected users
-    const connectedUsers = Array.from(clients.keys());
+    // const connectedUsers = Array.from(clients.keys());
 
-    for (var i in agents) {
-        var agent = agents[i]
+    clients.forEach(async (client, userId) =>  {
+        if (client.readyState === WebSocket.OPEN) {
+            for (var i in agents) {
 
-        if (!connectedUsers.includes(agent.user_id)) {
-            // Skip agents who are not connected
-            continue;
+                // if (!connectedUsers.includes(agent.user_id)) {
+                //     // Skip agents who are not connected
+                //     continue;
+                // }
+        
+                const platformType = platform_type == "raksha" ? 1 : 2
+                const sender = await User.getProfile(user_id)
+
+                var sosType
+
+                if(ext == "jpg") {
+                    sosType = 1
+                } else {
+                    sosType = 2 
+                }
+
+                if(agents[i].user_id == userId) {
+
+                    await Sos.broadcast(
+                        sos_id, 
+                        user_id,
+                        location,
+                        media,
+                        sosType,
+                        lat, 
+                        lng,
+                        country,
+                        time,
+                        platformType
+                    )
+
+                    var username = sender.length == 0 ? "-" : sender[0].username
+                    
+                    client.send(JSON.stringify({
+                        type: "sos",
+                        id: sos_id,
+                        username: username,
+                        media: media,
+                        media_type: sosType == 1 
+                        ? "image" 
+                        : "video",
+                        country: country,
+                        location: location,
+                        time: time,
+                        lat: lat, 
+                        lng: lng,
+                        is_confirm: false,
+                        platform_type: platform_type
+                    }))
+                }
+            }
         }
- 
-        const agentRecipient = clients.get(agent.user_id)
-        const platformType = platform_type == "raksha" ? 1 : 2
-        const sender = await User.getProfile(user_id)
-
-        var sosType
-
-        if(ext == "jpg") {
-            sosType = 1
-        } else {
-            sosType = 2 
-        }
-
-        if(typeof agentRecipient != "undefined") {
-
-            await Sos.broadcast(
-                sos_id, 
-                user_id,
-                location,
-                media,
-                sosType,
-                lat, 
-                lng,
-                country,
-                time,
-                platformType
-            )
-
-            var username = sender.length == 0 ? "-" : sender[0].username
-            
-            agentRecipient.send(JSON.stringify({
-                type: "sos",
-                id: sos_id,
-                username: username,
-                media: media,
-                media_type: sosType == 1 
-                ? "image" 
-                : "video",
-                country: country,
-                location: location,
-                time: time,
-                lat: lat, 
-                lng: lng,
-                is_confirm: false,
-                platform_type: platform_type
-            }))
-
-        } 
-
-    }
+    })
 } 
 
 async function handleConfirmSos(ws, message) { 
