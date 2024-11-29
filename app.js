@@ -129,7 +129,7 @@ async function handleSos(_, message) {
                     sosType = 2 
                 }
 
-                if(agents[i].user_id == userId) {
+                // if(agents[i].user_id == userId) {
 
                     await Sos.broadcast(
                         sos_id, 
@@ -162,7 +162,7 @@ async function handleSos(_, message) {
                         is_confirm: false,
                         platform_type: platform_type
                     }))
-                }
+                // }
             }
         }
     })
