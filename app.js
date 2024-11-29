@@ -110,7 +110,7 @@ async function handleSos(_, message) {
     // const connectedUsers = Array.from(clients.keys());
 
     clients.forEach(async (client, userId) =>  {
-        if (client.readyState === WebSocket.OPEN) {
+        if (client.readyState === WebSocketServer.OPEN) {
             for (var i in agents) {
 
                 // if (!connectedUsers.includes(agent.user_id)) {
@@ -119,7 +119,7 @@ async function handleSos(_, message) {
                 // }
         
                 const platformType = platform_type == "raksha" ? 1 : 2
-                const sender = await User.getProfile(agents[i].user_id)
+                const sender = await User.getProfile(user_id)
 
                 var sosType
 
@@ -133,7 +133,7 @@ async function handleSos(_, message) {
 
                     await Sos.broadcast(
                         sos_id, 
-                        agents[i].user_id,
+                        user_id,
                         location,
                         media,
                         sosType,
@@ -146,7 +146,7 @@ async function handleSos(_, message) {
 
                     var username = sender.length == 0 ? "-" : sender[0].username
                     
-                    agentRecipient.send(JSON.stringify({
+                    client.send(JSON.stringify({
                         type: "sos",
                         id: sos_id,
                         username: username,
