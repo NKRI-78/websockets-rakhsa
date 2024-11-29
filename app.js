@@ -133,7 +133,7 @@ async function handleSos(_, message) {
 
                     await Sos.broadcast(
                         sos_id, 
-                        user_id,
+                        agents[i].user_id,
                         location,
                         media,
                         sosType,
