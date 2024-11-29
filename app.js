@@ -250,6 +250,7 @@ async function handleUserFinishSos(message) {
     if(recipient) {
         recipient.send(JSON.stringify({
             "type": "user-finish-sos",
+            "sos_id": sos_id
         }))
     }
  }
