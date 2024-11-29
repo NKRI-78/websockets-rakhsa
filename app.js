@@ -108,6 +108,21 @@ async function handleSos(_, message) {
 
     // Get all connected users
     // const connectedUsers = Array.from(clients.keys());
+    
+    const platformType = platform_type == "raksha" ? 1 : 2
+
+    await Sos.broadcast(
+        sos_id, 
+        user_id,
+        location,
+        media,
+        sosType,
+        lat, 
+        lng,
+        country,
+        time,
+        platformType
+    )
 
     clients.forEach(async (client, userId) =>  {
         if (client.readyState === WebSocketServer.OPEN) {
@@ -118,7 +133,6 @@ async function handleSos(_, message) {
                 //     continue;
                 // }
         
-                const platformType = platform_type == "raksha" ? 1 : 2
                 const sender = await User.getProfile(user_id)
 
                 var sosType
@@ -129,20 +143,7 @@ async function handleSos(_, message) {
                     sosType = 2 
                 }
 
-
-                    await Sos.broadcast(
-                        sos_id, 
-                        user_id,
-                        location,
-                        media,
-                        sosType,
-                        lat, 
-                        lng,
-                        country,
-                        time,
-                        platformType
-                    )
-
+                if(agents[i].user_id == userId) {
                     var username = sender.length == 0 ? "-" : sender[0].username
                     
                     client.send(JSON.stringify({
@@ -161,6 +162,7 @@ async function handleSos(_, message) {
                         is_confirm: false,
                         platform_type: platform_type
                     }))
+                }
             }
         }
     })
