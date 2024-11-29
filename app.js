@@ -108,7 +108,15 @@ async function handleSos(_, message) {
 
     // Get all connected users
     // const connectedUsers = Array.from(clients.keys());
-    
+
+    var sosType
+
+    if(ext == "jpg") {
+        sosType = 1
+    } else {
+        sosType = 2 
+    }
+
     const platformType = platform_type == "raksha" ? 1 : 2
 
     await Sos.broadcast(
@@ -134,14 +142,6 @@ async function handleSos(_, message) {
                 // }
         
                 const sender = await User.getProfile(user_id)
-
-                var sosType
-
-                if(ext == "jpg") {
-                    sosType = 1
-                } else {
-                    sosType = 2 
-                }
 
                 if(agents[i].user_id == userId) {
                     var username = sender.length == 0 ? "-" : sender[0].username
