@@ -104,16 +104,21 @@ async function handleSos(_, message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message   
 
     var continent = utils.countryCompareContinent("Japan")
-
     var agents = await Agent.userAgent(continent)
+
+    // Get all connected users
+    const connectedUsers = Array.from(clients.keys());
 
     for (var i in agents) {
         var agent = agents[i]
+
+        if (!connectedUsers.includes(agent.user_id)) {
+            // Skip agents who are not connected
+            continue;
+        }
  
         const agentRecipient = clients.get(agent.user_id)
-
         const platformType = platform_type == "raksha" ? 1 : 2
-
         const sender = await User.getProfile(user_id)
 
         var sosType
