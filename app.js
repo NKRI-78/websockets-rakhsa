@@ -119,7 +119,7 @@ async function handleSos(_, message) {
                 // }
         
                 const platformType = platform_type == "raksha" ? 1 : 2
-                const sender = await User.getProfile(user_id)
+                const sender = await User.getProfile(agents[i].user_id)
 
                 var sosType
 
@@ -129,7 +129,7 @@ async function handleSos(_, message) {
                     sosType = 2 
                 }
 
-                // if(agents[i].user_id == userId) {
+                if(agents[i].user_id == userId) {
 
                     await Sos.broadcast(
                         sos_id, 
@@ -146,7 +146,7 @@ async function handleSos(_, message) {
 
                     var username = sender.length == 0 ? "-" : sender[0].username
                     
-                    client.send(JSON.stringify({
+                    agentRecipient.send(JSON.stringify({
                         type: "sos",
                         id: sos_id,
                         username: username,
@@ -162,8 +162,12 @@ async function handleSos(_, message) {
                         is_confirm: false,
                         platform_type: platform_type
                     }))
-                // }
+
+                }
+
+
             }
+
         }
     })
 } 
