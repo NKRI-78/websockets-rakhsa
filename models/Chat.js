@@ -348,7 +348,7 @@ module.exports = {
             
             const values = [msgId, chatId, sender, recipient, content, 1, 1]
 
-            console.lg(values)
+            console.log(values)
 
             conn.query(query, values, (e, result) => {
                 if(e) {
