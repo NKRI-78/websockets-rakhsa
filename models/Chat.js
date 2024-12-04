@@ -352,6 +352,7 @@ module.exports = {
 
             conn.query(query, values, (e, result) => {
                 if(e) {
+                    console.lg("error kesini")
                     reject(new Error(e))
                 } else {
                     resolve(result)
