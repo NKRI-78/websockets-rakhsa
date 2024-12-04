@@ -288,6 +288,8 @@ async function handleJoin(ws, message) {
 async function handleLeave(_, message) {
     const { user_id } = message
 
+    console.log(`user_id ${user_id} leave`)
+
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
     }
@@ -476,17 +478,14 @@ setInterval(() => {
 
 function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
+        if (socket === ws) {
 
-      if (socket === ws) {
+            leave(user_id)
 
-        leave(user_id)
-
-        clients.delete(user_id)
-        
-        break;
-
-      }
-
+            clients.delete(user_id)
+            
+            break;
+        }
     }
 }
 
