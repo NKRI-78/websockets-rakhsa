@@ -346,11 +346,7 @@ module.exports = {
             const query = `INSERT INTO messages (uid, chat_id, sender_id, receiver_id, content, ack, type)
             VALUES (?, ?, ?, ?, ?, ?, ?)`
             
-            const values = [msgId, chatId, sender, recipient, content, 1, 1]
-
-            console.log(values)
-
-            conn.query(query, values, (e, result) => {
+            conn.query(query, [msgId, chatId, sender, recipient, content, 1, 1], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
