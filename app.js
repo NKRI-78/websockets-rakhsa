@@ -44,9 +44,6 @@ wss.on("connection", (ws, request) => {
             case 'ping':
                 ws.send(JSON.stringify({ type: "pong" }));
             break;
-            case 'handle': 
-                handleSos(ws, parsedMessage)
-            break;
             case 'join':
                 handleJoin(ws, parsedMessage)
             break;
@@ -388,24 +385,58 @@ async function handleMessage(ws, message) {
     console.log(`=== SENDER === ${sender}`)
     console.log(`=== RECIPIENT === ${recipient}`)
     console.log(`=== TEXT === ${text}`)
+
+    console.log(typeof text === "object")
+
+    if(typeof text != "object") {
     
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
-  
-    const recipientSocket = clients.get(recipient)
+        await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
+    
+        const recipientSocket = clients.get(recipient)
 
-    if (recipientSocket) {
+        if (recipientSocket) {
 
-        recipientSocket.send(
+            recipientSocket.send(
+                JSON.stringify({ 
+                    type: "fetch-message",
+                    data: {
+                        id: msgId,
+                        chat_id: chat_id,
+                        user: {
+                            id: recipientId,
+                            name: recipientName, 
+                            avatar: recipientAvatar,
+                            is_me: false,
+                        },
+                        sender: {
+                            id: senderId,
+                        },
+                        is_read: true,
+                        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+                        text: text,
+                        type: "text"
+                    }
+                })
+            )
+
+        } else {
+
+        // Handle the case when the recipient is not connected
+        // You can implement different logic, e.g., store the message for later retrieval
+        
+        }
+
+        ws.send(
             JSON.stringify({ 
                 type: "fetch-message",
                 data: {
                     id: msgId,
                     chat_id: chat_id,
                     user: {
-                        id: recipientId,
-                        name: recipientName, 
-                        avatar: recipientAvatar,
-                        is_me: false,
+                        id: senderId,
+                        name: senderName, 
+                        avatar: senderAvatar,
+                        is_me: true,
                     },
                     sender: {
                         id: senderId,
@@ -418,35 +449,7 @@ async function handleMessage(ws, message) {
             })
         )
 
-    } else {
-
-      // Handle the case when the recipient is not connected
-      // You can implement different logic, e.g., store the message for later retrieval
-    
     }
-
-    ws.send(
-        JSON.stringify({ 
-            type: "fetch-message",
-            data: {
-                id: msgId,
-                chat_id: chat_id,
-                user: {
-                    id: senderId,
-                    name: senderName, 
-                    avatar: senderAvatar,
-                    is_me: true,
-                },
-                sender: {
-                    id: senderId,
-                },
-                is_read: true,
-                sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-                text: text,
-                type: "text"
-            }
-        })
-    )
 }
 
 async function handleContact(ws, message) {
