@@ -383,7 +383,13 @@ async function handleMessage(ws, message) {
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
 
-    await Chat.insertMessage(msgId, chat_id, senderId, recipientId, text)
+    console.log(`MSG ID ${msgId}`)
+    console.log(`CHAT ID ${chat_id}`)
+    console.log(`SENDER ${sender}`)
+    console.log(`RECIPIENT ${recipient}`)
+    console.log(`TEXT ${text}`)
+
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
   
     const recipientSocket = clients.get(recipient)
 
