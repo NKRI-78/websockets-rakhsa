@@ -344,13 +344,12 @@ module.exports = {
     insertMessage: (msgId, chatId, sender, recipient, content) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO messages (uid, chat_id, sender_id, receiver_id, content, ack, type)
-            VALUES (?, ?, ?, ?, ?, 1, 1)`
+            VALUES (?, ?, ?, ?, ?, ?, ?)`
             
-            const values = [msgId, chatId, sender, recipient, content]
+            const values = [msgId, chatId, sender, recipient, content, 1, 1]
 
             conn.query(query, values, (e, result) => {
                 if(e) {
-                    console.log("=== error kesini ===")
                     reject(new Error(e))
                 } else {
                     resolve(result)
