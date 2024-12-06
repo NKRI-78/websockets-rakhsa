@@ -198,7 +198,7 @@ async function handleConfirmSos(ws, message) {
             "sos_id": sos_id,
             "chat_id": chatId,
             "sender_id": senderId,
-            "recipient_id": user_agent_id,
+            "recipient_id": userAgentId,
             "is_confirm": true
         }))
     }
@@ -209,8 +209,8 @@ async function handleConfirmSos(ws, message) {
         "type": "confirm-sos",
         "sos_id": sos_id,
         "chat_id": chatId,
-        "sender_id": senderId,
-        "recipient_id": user_agent_id,
+        "sender_id": userAgentId,
+        "recipient_id": senderId,
         "is_confirm": true
     }))
 }
@@ -379,14 +379,6 @@ async function handleMessage(ws, message) {
     var recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
-
-    console.log(`=== MSG ID === ${msgId}`)
-    console.log(`=== CHAT ID === ${chat_id}`)
-    console.log(`=== SENDER === ${sender}`)
-    console.log(`=== RECIPIENT === ${recipient}`)
-    console.log(`=== TEXT === ${text}`)
-
-    console.log(typeof text === "object")
 
     if(typeof text != "object") {
     
