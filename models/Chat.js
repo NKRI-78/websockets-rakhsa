@@ -337,7 +337,7 @@ module.exports = {
                     (receiver_id = ? AND sender_id = ?)
             ` 
 
-            conn.query(query, [1, senderId, receiverId, receiverId, senderId], (e, result) => {
+            conn.query(query, [1, senderId, receiverId, senderId, receiverId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {

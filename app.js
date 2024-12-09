@@ -63,7 +63,7 @@ wss.on("connection", (ws, request) => {
                 handleFinishSos(ws, parsedMessage)
             break;
             case 'user-finish-sos': 
-                handleUserFinishSos(parsedMessage)
+                handleUserFinishSos(ws, parsedMessage)
             break;
             case 'typing': 
                 handleTyping(parsedMessage)
@@ -225,11 +225,8 @@ async function handleFinishSos(ws, message) {
     var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_id
-    var userAgentId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
     var recipient = clients.get(userId)
-
-    await Chat.updateIsConfirmByConversation(1, userId, userAgentId)
 
     if(recipient) {
         recipient.send(JSON.stringify({
@@ -242,12 +239,15 @@ async function handleFinishSos(ws, message) {
     }))
 }
 
-async function handleUserFinishSos(message) {
+async function handleUserFinishSos(ws, message) {
     const { sos_id } = message
 
     var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
+    var userAgentId = sos.length == 0 ? "-" : sos[0].user_id
+
+    await Chat.updateIsConfirmByConversation(userAgentId, userId)
 
     var recipient = clients.get(userId)
 
@@ -257,6 +257,11 @@ async function handleUserFinishSos(message) {
             "sos_id": sos_id
         }))
     }
+
+    ws.send(JSON.stringify({
+        "type": "user-finish-sos",
+        "sos_id": sos_id
+    }))
  }
 
 async function handleJoin(ws, message) {
