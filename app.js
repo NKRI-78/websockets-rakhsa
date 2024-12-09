@@ -213,8 +213,8 @@ async function handleConfirmSos(ws, message) {
         "type": "confirm-sos",
         "sos_id": sos_id,
         "chat_id": chatId,
-        "sender_id": userAgentId,
-        "recipient_id": senderId,
+        "sender_id": senderId,
+        "recipient_id": userAgentId,
         "is_confirm": true
     }))
 }
@@ -389,8 +389,6 @@ async function handleMessage(ws, message) {
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
 
-    console.log(`=== TEXT ${text} ===`);
-    
     await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
 
     const recipientSocket = clients.get(recipient)
