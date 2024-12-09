@@ -272,7 +272,6 @@ async function handleJoin(ws, message) {
     if (clients.has(user_id)) {
         const oldConn = clients.get(user_id)
 
-        // Send a close message and terminate the old connection
         try {
             oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
             oldConn.terminate()
@@ -280,10 +279,8 @@ async function handleJoin(ws, message) {
             console.error("Error terminating old connection:", error)
         }
 
-        // Remove from client map and clear session data
         clients.delete(user_id)
 
-        // Log the replacement for monitoring purposes
         console.log(`Old connection for client ${user_id} replaced by new connection.`)
     }
 
@@ -391,6 +388,8 @@ async function handleMessage(ws, message) {
     var recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
+
+    console.log(`=== TEXT ${text} ===`);
 
     if(typeof text != "object") {
     
