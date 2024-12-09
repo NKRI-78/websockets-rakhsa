@@ -26,9 +26,9 @@ const wss = new WebSocketServer.Server({ server })
 const clients = new Map()
 
 wss.on("connection", (ws, request) => {
-    const clientIp = request.socket.remoteAddress
+    // const clientIp = request.socket.remoteAddress
 
-    console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
+    // console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
 
     ws.isAlive = true;
 
