@@ -184,6 +184,8 @@ async function handleConfirmSos(ws, message) {
 
         await Chat.insertChat(chatId, senderId, userAgentId)
 
+        await Chat.updateIsConfirm(chatId)
+
     } else {
 
         chatId = await checkConversation.length == 0 
