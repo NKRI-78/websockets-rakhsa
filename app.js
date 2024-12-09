@@ -184,7 +184,7 @@ async function handleConfirmSos(ws, message) {
 
         await Chat.insertChat(chatId, senderId, userAgentId)
 
-        await Chat.updateIsConfirm(chatId)
+        await Chat.updateIsConfirm(0, chatId)
 
     } else {
 
@@ -192,7 +192,7 @@ async function handleConfirmSos(ws, message) {
         ? '-' 
         : checkConversation[0].uid 
 
-        await Chat.updateIsConfirm(chatId)
+        await Chat.updateIsConfirm(0, chatId)
 
     }
       
@@ -225,8 +225,11 @@ async function handleFinishSos(ws, message) {
     var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_id
+    var userAgentId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
     var recipient = clients.get(userId)
+
+    await Chat.updateIsConfirmByConversation(1, userId, userAgentId)
 
     if(recipient) {
         recipient.send(JSON.stringify({
