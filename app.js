@@ -192,6 +192,8 @@ async function handleConfirmSos(ws, message) {
         ? '-' 
         : checkConversation[0].uid 
 
+        await Chat.updateIsConfirm(chatId)
+
     }
       
     if(broadcastToSender) {
