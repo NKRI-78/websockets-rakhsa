@@ -74,7 +74,7 @@ wss.on("connection", (ws, request) => {
             case 'ack-read': 
                 handleAckRead(ws, parsedMessage)
             break;
-            case 'contact':assignActivity 
+            case 'contact': 
                 handleContact(ws, parsedMessage)
             break
             case 'get-chat': 
@@ -133,11 +133,6 @@ async function handleSos(_, message) {
         if (client.readyState === WebSocketServer.OPEN) {
             for (var i in agents) {
 
-                // if (!connectedUsers.includes(agent.user_id)) {
-                //     // Skip agents who are not connected
-                //     continue;
-                // }
-        
                 const sender = await User.getProfile(user_id)
 
                 if(agents[i].user_id == userId) {
