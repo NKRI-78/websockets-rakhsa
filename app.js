@@ -162,6 +162,10 @@ async function handleConfirmSos(ws, message) {
 
     const broadcastToSender = clients.get(senderId)
 
+    if (!broadcastToSender) {
+        console.warn(`No WebSocket connection found for senderId: ${senderId}`);
+    }
+
     var userAgentId = user_agent_id
 
     var chatId = uuidv4()
