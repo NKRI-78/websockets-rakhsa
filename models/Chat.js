@@ -348,20 +348,6 @@ module.exports = {
         })
     },
 
-    updateIsConfirm: (isConfirm, chatId) => {
-        return new Promise((resolve, reject) => {
-            const query = `UPDATE chats SET is_confirm = ? WHERE uid = ?`
-
-            conn.query(query, [isConfirm, chatId], (e, result) => {
-                if(e) {
-                    reject(new Error(e))
-                } else {
-                    resolve(result)
-                }
-            })
-        })
-    },
-
     insertActivities: (uid, chatId, userId) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO chat_activities (uid, user_id, chat_id, is_active) 

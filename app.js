@@ -195,8 +195,6 @@ async function handleConfirmSos(ws, message) {
         }))
     }
 
-    await Chat.updateIsConfirm(0, chatId)
-
     await Sos.approvalConfirm(sos_id, userAgentId)
 
     ws.send(JSON.stringify({
