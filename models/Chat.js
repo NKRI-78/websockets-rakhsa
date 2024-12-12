@@ -314,7 +314,7 @@ module.exports = {
 
     insertChat: (chatId, sender, recipient, sosId) => {
         return new Promise((resolve, reject) => {
-            const query = `INSERT INTO chats (uid, sender_id, receiver_id) 
+            const query = `INSERT INTO chats (uid, sender_id, receiver_id, sos_id) 
             VALUES (?, ?, ?, ?)`
 
             conn.query(query, [chatId, sender, recipient, sosId], (e, result) => {
