@@ -26,10 +26,6 @@ const wss = new WebSocketServer.Server({ server })
 const clients = new Map()
 
 wss.on("connection", (ws, request) => {
-    // const clientIp = request.socket.remoteAddress
-
-    // console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
-
     ws.isAlive = true;
 
     ws.on("pong", () => {
@@ -103,9 +99,6 @@ async function handleSos(_, message) {
     var continent = utils.countryCompareContinent("Japan")
     var agents = await Agent.userAgent(continent)
 
-    // Get all connected users
-    // const connectedUsers = Array.from(clients.keys());
-
     var sosType
 
     if(ext == "jpg") {
@@ -129,7 +122,7 @@ async function handleSos(_, message) {
         platformType
     )
 
-    clients.forEach(async (client, userId) =>  {
+    clients.forEach(async (client, userId) => {
         if (client.readyState === WebSocketServer.OPEN) {
             for (var i in agents) {
 
@@ -179,19 +172,15 @@ async function handleConfirmSos(ws, message) {
 
         await Chat.insertChat(chatId, senderId, userAgentId)
 
-        await Chat.updateIsConfirm(0, chatId)
-
     } else {
 
         chatId = await checkConversation.length == 0 
         ? '-' 
         : checkConversation[0].uid 
 
-        await Chat.updateIsConfirm(0, chatId)
-
     }
       
-    if(broadcastToSender) {
+    if(broadcastToSender && broadcastToSender.readyState === WebSocket.OPEN) {
         broadcastToSender.send(JSON.stringify({
             "type": "confirm-sos",
             "sos_id": sos_id,
@@ -201,6 +190,8 @@ async function handleConfirmSos(ws, message) {
             "is_confirm": true
         }))
     }
+
+    await Chat.updateIsConfirm(0, chatId)
 
     await Sos.approvalConfirm(sos_id, userAgentId)
 

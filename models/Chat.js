@@ -65,10 +65,11 @@ module.exports = {
 
     checkConversation: (senderId, receiverId) => {
         return new Promise((resolve, reject) => {
-            const query = `SELECT uid FROM chats 
-            WHERE sender_id = '${senderId}' AND receiver_id = '${receiverId}'
-            OR receiver_id = '${senderId}' AND sender_id = '${receiverId}'`
-
+            const query = `SELECT uid 
+                FROM chats 
+                WHERE (sender_id = '${senderId}' AND receiver_id = '${receiverId}')
+                OR (sender_id = '${receiverId}' AND receiver_id = '${senderId}')
+            `
             conn.query(query, (e, result) => {
                 if(e) {
                     reject(new Error(e))
