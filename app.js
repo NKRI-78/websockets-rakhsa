@@ -180,7 +180,7 @@ async function handleConfirmSos(ws, message) {
 
     }
       
-    if(broadcastToSender && broadcastToSender.readyState === WebSocket.OPEN) {
+    if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
             "type": "confirm-sos",
             "sos_id": sos_id,
