@@ -170,19 +170,19 @@ async function handleConfirmSos(ws, message) {
 
     var chatId = uuidv4()
     
-    var checkConversation = await Chat.checkConversation(senderId, userAgentId)
+    // var checkConversation = await Chat.checkConversation(senderId, userAgentId)
 
-    if(checkConversation.length == 0) {
+    // if(checkConversation.length == 0) {
 
-        await Chat.insertChat(chatId, senderId, userAgentId)
+    await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
 
-    } else {
+    // } else {
 
-        chatId = await checkConversation.length == 0 
-        ? '-' 
-        : checkConversation[0].uid 
+        // chatId = await checkConversation.length == 0 
+        // ? '-' 
+        // : checkConversation[0].uid 
 
-    }
+    // }
       
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({

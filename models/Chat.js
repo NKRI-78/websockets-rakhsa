@@ -312,12 +312,12 @@ module.exports = {
         })
     },
 
-    insertChat: (chatId, sender, recipient) => {
+    insertChat: (chatId, sender, recipient, sosId) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO chats (uid, sender_id, receiver_id) 
-            VALUES (?, ?, ?)`
+            VALUES (?, ?, ?, ?)`
 
-            conn.query(query, [chatId, sender, recipient], (e, result) => {
+            conn.query(query, [chatId, sender, recipient, sosId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
