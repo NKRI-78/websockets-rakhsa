@@ -52,7 +52,7 @@ wss.on("connection", (ws, request) => {
             case 'sos':
                 handleSos(ws, parsedMessage)
             break;
-            case 'confirm-sos': 
+            case 'agent-confirm-sos': 
                 handleConfirmSos(ws, parsedMessage)
             break;
             case 'finish-sos': 
@@ -186,7 +186,7 @@ async function handleConfirmSos(ws, message) {
       
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
-            "type": "confirm-sos",
+            "type": `confirm-sos-${senderId}`,
             "sos_id": sos_id,
             "chat_id": chatId,
             "sender_id": senderId,
@@ -198,7 +198,7 @@ async function handleConfirmSos(ws, message) {
     await Sos.approvalConfirm(sos_id, userAgentId)
 
     ws.send(JSON.stringify({
-        "type": "confirm-sos",
+        "type": `confirm-sos-${userAgentId}`,
         "sos_id": sos_id,
         "chat_id": chatId,
         "sender_id": senderId,
