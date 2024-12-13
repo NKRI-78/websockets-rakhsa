@@ -26,10 +26,6 @@ const wss = new WebSocketServer.Server({ server })
 const clients = new Map()
 
 wss.on("connection", (ws, request) => {
-    const clientIp = request.socket.remoteAddress
-
-    console.log(`[WebSocket] Client with IP ${clientIp} has connected`)
-
     ws.isAlive = true;
 
     ws.on("pong", () => {
@@ -63,7 +59,7 @@ wss.on("connection", (ws, request) => {
                 handleFinishSos(ws, parsedMessage)
             break;
             case 'user-finish-sos': 
-                handleUserFinishSos(parsedMessage)
+                handleUserFinishSos(ws, parsedMessage)
             break;
             case 'typing': 
                 handleTyping(parsedMessage)
@@ -74,7 +70,7 @@ wss.on("connection", (ws, request) => {
             case 'ack-read': 
                 handleAckRead(ws, parsedMessage)
             break;
-            case 'contact':assignActivity 
+            case 'contact': 
                 handleContact(ws, parsedMessage)
             break
             case 'get-chat': 
@@ -103,9 +99,6 @@ async function handleSos(_, message) {
     var continent = utils.countryCompareContinent("Japan")
     var agents = await Agent.userAgent(continent)
 
-    // Get all connected users
-    // const connectedUsers = Array.from(clients.keys());
-
     var sosType
 
     if(ext == "jpg") {
@@ -129,15 +122,10 @@ async function handleSos(_, message) {
         platformType
     )
 
-    clients.forEach(async (client, userId) =>  {
+    clients.forEach(async (client, userId) => {
         if (client.readyState === WebSocketServer.OPEN) {
             for (var i in agents) {
 
-                // if (!connectedUsers.includes(agent.user_id)) {
-                //     // Skip agents who are not connected
-                //     continue;
-                // }
-        
                 const sender = await User.getProfile(user_id)
 
                 if(agents[i].user_id == userId) {
@@ -174,23 +162,27 @@ async function handleConfirmSos(ws, message) {
 
     const broadcastToSender = clients.get(senderId)
 
+    if (!broadcastToSender) {
+        console.warn(`No WebSocket connection found for senderId: ${senderId}`);
+    }
+
     var userAgentId = user_agent_id
 
     var chatId = uuidv4()
     
-    var checkConversation = await Chat.checkConversation(senderId, userAgentId)
+    // var checkConversation = await Chat.checkConversation(senderId, userAgentId)
 
-    if(checkConversation.length == 0) {
+    // if(checkConversation.length == 0) {
 
-        await Chat.insertChat(chatId, senderId, userAgentId)
+    await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
 
-    } else {
+    // } else {
 
-        chatId = await checkConversation.length == 0 
-        ? '-' 
-        : checkConversation[0].uid 
+        // chatId = await checkConversation.length == 0 
+        // ? '-' 
+        // : checkConversation[0].uid 
 
-    }
+    // }
       
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
@@ -235,12 +227,15 @@ async function handleFinishSos(ws, message) {
     }))
 }
 
-async function handleUserFinishSos(message) {
+async function handleUserFinishSos(ws, message) {
     const { sos_id } = message
 
     var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
+    var userAgentId = sos.length == 0 ? "-" : sos[0].user_id
+
+    await Chat.updateIsConfirmByConversation(userAgentId, userId)
 
     var recipient = clients.get(userId)
 
@@ -250,6 +245,11 @@ async function handleUserFinishSos(message) {
             "sos_id": sos_id
         }))
     }
+
+    ws.send(JSON.stringify({
+        "type": "user-finish-sos",
+        "sos_id": sos_id
+    }))
  }
 
 async function handleJoin(ws, message) {
@@ -260,7 +260,6 @@ async function handleJoin(ws, message) {
     if (clients.has(user_id)) {
         const oldConn = clients.get(user_id)
 
-        // Send a close message and terminate the old connection
         try {
             oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
             oldConn.terminate()
@@ -268,10 +267,8 @@ async function handleJoin(ws, message) {
             console.error("Error terminating old connection:", error)
         }
 
-        // Remove from client map and clear session data
         clients.delete(user_id)
 
-        // Log the replacement for monitoring purposes
         console.log(`Old connection for client ${user_id} replaced by new connection.`)
     }
 
@@ -380,55 +377,23 @@ async function handleMessage(ws, message) {
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
 
-    if(typeof text != "object") {
-    
-        await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
-    
-        const recipientSocket = clients.get(recipient)
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
 
-        if (recipientSocket) {
+    const recipientSocket = clients.get(recipient)
 
-            recipientSocket.send(
-                JSON.stringify({ 
-                    type: "fetch-message",
-                    data: {
-                        id: msgId,
-                        chat_id: chat_id,
-                        user: {
-                            id: recipientId,
-                            name: recipientName, 
-                            avatar: recipientAvatar,
-                            is_me: false,
-                        },
-                        sender: {
-                            id: senderId,
-                        },
-                        is_read: true,
-                        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-                        text: text,
-                        type: "text"
-                    }
-                })
-            )
+    if (recipientSocket) {
 
-        } else {
-
-        // Handle the case when the recipient is not connected
-        // You can implement different logic, e.g., store the message for later retrieval
-        
-        }
-
-        ws.send(
+        recipientSocket.send(
             JSON.stringify({ 
                 type: "fetch-message",
                 data: {
                     id: msgId,
                     chat_id: chat_id,
                     user: {
-                        id: senderId,
-                        name: senderName, 
-                        avatar: senderAvatar,
-                        is_me: true,
+                        id: recipientId,
+                        name: recipientName, 
+                        avatar: recipientAvatar,
+                        is_me: false,
                     },
                     sender: {
                         id: senderId,
@@ -441,7 +406,36 @@ async function handleMessage(ws, message) {
             })
         )
 
+    } else {
+
+    // Handle the case when the recipient is not connected
+    // You can implement different logic, e.g., store the message for later retrieval
+    
     }
+
+    ws.send(
+        JSON.stringify({ 
+            type: "fetch-message",
+            data: {
+                id: msgId,
+                chat_id: chat_id,
+                user: {
+                    id: senderId,
+                    name: senderName, 
+                    avatar: senderAvatar,
+                    is_me: true,
+                },
+                sender: {
+                    id: senderId,
+                },
+                is_read: true,
+                sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+                text: text,
+                type: "text"
+            }
+        })
+    )
+
 }
 
 async function handleContact(ws, message) {

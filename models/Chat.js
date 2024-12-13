@@ -65,10 +65,11 @@ module.exports = {
 
     checkConversation: (senderId, receiverId) => {
         return new Promise((resolve, reject) => {
-            const query = `SELECT uid FROM chats 
-            WHERE sender_id = '${senderId}' AND receiver_id = '${receiverId}'
-            OR receiver_id = '${senderId}' AND sender_id = '${receiverId}'`
-
+            const query = `SELECT uid 
+                FROM chats 
+                WHERE (sender_id = '${senderId}' AND receiver_id = '${receiverId}')
+                OR (sender_id = '${receiverId}' AND receiver_id = '${senderId}')
+            `
             conn.query(query, (e, result) => {
                 if(e) {
                     reject(new Error(e))
@@ -311,12 +312,33 @@ module.exports = {
         })
     },
 
-    insertChat: (chatId, sender, recipient) => {
+    insertChat: (chatId, sender, recipient, sosId) => {
         return new Promise((resolve, reject) => {
-            const query = `INSERT INTO chats (uid, sender_id, receiver_id) 
-            VALUES (?, ?, ?)`
+            const query = `INSERT INTO chats (uid, sender_id, receiver_id, sos_id) 
+            VALUES (?, ?, ?, ?)`
 
-            conn.query(query, [chatId, sender, recipient], (e, result) => {
+            conn.query(query, [chatId, sender, recipient, sosId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
+    updateIsConfirmByConversation: (senderId, receiverId) => {
+        return new Promise((resolve, reject) => {
+            const query = `
+                UPDATE chats 
+                SET is_confirm = ? 
+                WHERE 
+                    (sender_id = ? AND receiver_id = ?) 
+                    OR 
+                    (receiver_id = ? AND sender_id = ?)
+            ` 
+
+            conn.query(query, [1, senderId, receiverId, senderId, receiverId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
