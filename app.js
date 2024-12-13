@@ -415,7 +415,7 @@ async function handleMessage(ws, message) {
 
     ws.send(
         JSON.stringify({ 
-            type: "fetch-message",
+            type: `fetch-message-${chat_id}`,
             data: {
                 id: msgId,
                 chat_id: chat_id,
