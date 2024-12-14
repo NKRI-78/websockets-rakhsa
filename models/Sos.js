@@ -36,11 +36,11 @@ module.exports = {
 
     approvalConfirm: (sosId, userAgentId) => {
         return new Promise((resolve, reject) => {
-            const query = `UPDATE sos SET is_confirm = ?, 
+            const query = `UPDATE sos SET sos_activity_type = ?, 
             user_agent_id = ? 
             WHERE uid = ?`
 
-            conn.query(query, [1, userAgentId, sosId], (e, result) => {
+            conn.query(query, [3, userAgentId, sosId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {

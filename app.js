@@ -219,8 +219,6 @@ async function handleUserFinishSos(ws, message) {
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
     var userAgentId = sos.length == 0 ? "-" : sos[0].user_id
 
-    await Chat.updateIsConfirmByConversation(userAgentId, userId)
-
     var recipient = clients.get(userId)
 
     if(recipient) {
