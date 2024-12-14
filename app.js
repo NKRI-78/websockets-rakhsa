@@ -144,7 +144,6 @@ async function handleSos(_, message) {
                         time: time,
                         lat: lat, 
                         lng: lng,
-                        is_confirm: false,
                         platform_type: platform_type
                     }))
                 }
@@ -175,7 +174,6 @@ async function handleConfirmSos(ws, message) {
             "chat_id": chatId,
             "sender_id": senderId,
             "recipient_id": userAgentId,
-            "is_confirm": true
         }))
     }
 
@@ -187,7 +185,6 @@ async function handleConfirmSos(ws, message) {
         "chat_id": chatId,
         "sender_id": senderId,
         "recipient_id": userAgentId,
-        "is_confirm": true
     }))
 }
 
