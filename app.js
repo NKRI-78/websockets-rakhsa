@@ -129,12 +129,17 @@ async function handleSos(_, message) {
                 const sender = await User.getProfile(user_id)
 
                 if(agents[i].user_id == userId) {
-                    var username = sender.length == 0 ? "-" : sender[0].username
+                    var senderId = user_id
+                    var senderName = sender.length == 0 ? "-" : sender[0].username
                     
                     client.send(JSON.stringify({
                         type: "sos",
                         id: sos_id,
-                        username: username,
+                        username: senderName,
+                        sender: {
+                            id: senderId,
+                            name: senderName
+                        },  
                         media: media,
                         media_type: sosType == 1 
                         ? "image" 
