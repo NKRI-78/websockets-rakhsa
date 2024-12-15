@@ -25,7 +25,37 @@ module.exports = {
 
             conn.query(query, [sosId, userId, "Emergency", location, media, sosType, lat, lng, country, time, platformType], (e, result) => {
                 if(e) {
-                    console.log(e)
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
+    checkExpireSos: () => {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT uid 
+            FROM sos 
+            WHERE created_at < NOW() - INTERVAL 1 MINUTE 
+            AND sos_activity_type = 1`
+
+            conn.query(query, (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
+    moveSosToRecently: (sosId) => {
+        return new Promise((resolve, reject) => {
+            const query = `UPDATE sos SET sos_activity_type = 2 WHERE uid = ?`
+
+            conn.query(query, [sosId], (e, result) => {
+                if(e) {
                     reject(new Error(e))
                 } else {
                     resolve(result)
