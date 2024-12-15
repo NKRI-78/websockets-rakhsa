@@ -135,7 +135,6 @@ async function handleSos(_, message) {
                     client.send(JSON.stringify({
                         type: "sos",
                         id: sos_id,
-                        username: senderName,
                         sender: {
                             id: senderId,
                             name: senderName
