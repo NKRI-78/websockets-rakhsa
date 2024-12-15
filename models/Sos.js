@@ -50,19 +50,19 @@ module.exports = {
         })
     },
 
-    moveSosToRecently: (sosId) => {
-        return new Promise((resolve, reject) => {
-            const query = `UPDATE sos SET sos_activity_type = 2 WHERE uid = ?`
+    // moveSosToRecently: (sosId) => {
+    //     return new Promise((resolve, reject) => {
+    //         const query = `UPDATE sos SET sos_activity_type = 2 WHERE uid = ?`
 
-            conn.query(query, [sosId], (e, result) => {
-                if(e) {
-                    reject(new Error(e))
-                } else {
-                    resolve(result)
-                }
-            })
-        })
-    },
+    //         conn.query(query, [sosId], (e, result) => {
+    //             if(e) {
+    //                 reject(new Error(e))
+    //             } else {
+    //                 resolve(result)
+    //             }
+    //         })
+    //     })
+    // },
 
     approvalConfirm: (sosId, userAgentId) => {
         return new Promise((resolve, reject) => {

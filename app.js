@@ -1,7 +1,6 @@
 require("dotenv").config()
 
 const { v4: uuidv4 } = require('uuid')
-const cron = require("cron")
 
 const { createServer } = require('http')
 const WebSocketServer = require('ws')
@@ -485,18 +484,18 @@ function handleDisconnect(ws) {
 //     }
 // }
 
-var CronJob = cron.CronJob
+// var CronJob = cron.CronJob
 
-const taskSosExpireAfter1MinuteNotReact = new CronJob('* * * * *', async () => {
-    var sos = await Sos.checkExpireSos()
+// const taskSosExpireAfter1MinuteNotReact = new CronJob('* * * * *', async () => {
+//     var sos = await Sos.checkExpireSos()
 
-    if (sos.length > 0) {
-        var sosId = sos[0].uid
-        await Sos.moveSosToRecently(sosId)
-    }
-})
+//     if (sos.length > 0) {
+//         var sosId = sos[0].uid
+//         await Sos.moveSosToRecently(sosId)
+//     }
+// })
 
-taskSosExpireAfter1MinuteNotReact.start()
+// taskSosExpireAfter1MinuteNotReact.start()
 
 async function leave(user_id) {
     for (const socket of clients.values()) {
