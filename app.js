@@ -168,6 +168,11 @@ async function handleConfirmSos(ws, message) {
     var userAgentId = user_agent_id
 
     var chatId = uuidv4()
+
+    var agents = await User.getProfile(userAgentId)
+
+    var agentId = agents.length == 0 ? "-" : agents[0].user_id
+    var agentName = agents.length == 0 ? "-" : agents[0].username
     
     await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
 
@@ -176,6 +181,8 @@ async function handleConfirmSos(ws, message) {
             "type": `confirm-sos-${senderId}`,
             "sos_id": sos_id,
             "chat_id": chatId,
+            "agent_id": agentId,
+            "agent_name": agentName,
             "sender_id": senderId,
             "recipient_id": userAgentId,
         }))
@@ -187,6 +194,8 @@ async function handleConfirmSos(ws, message) {
         "type": `confirm-sos-${userAgentId}`,
         "sos_id": sos_id,
         "chat_id": chatId,
+        "agent_id": agentId,
+        "agent_name": agentName,
         "sender_id": senderId,
         "recipient_id": userAgentId,
     }))
