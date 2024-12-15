@@ -250,28 +250,79 @@ async function handleUserFinishSos(ws, message) {
 async function handleJoin(ws, message) {
     const { user_id } = message
 
-    console.log(`user_id ${user_id} join`)
+    // Initialize an array for the user_id if not already present
+     if (!clients.has(user_id)) {
+        clients.set(user_id, []);
+    }
 
-    if (clients.has(user_id)) {
-        const oldConn = clients.get(user_id)
+    // Add the new WebSocket connection to the array
+    const userConnections = clients.get(user_id);
+    userConnections.push(ws);
 
-        try {
-            oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
-            oldConn.terminate()
-        } catch (error) {
-            console.error("Error terminating old connection:", error)
+    console.log(`Total connections for user_id ${user_id}: ${userConnections.length}`);
+
+    // Notify all clients about the user's online status
+    for (const [id, sockets] of clients.entries()) {
+        sockets.forEach((socket) => {
+            try {
+                socket.send(JSON.stringify({ type: "user_online", user_id: user_id }));
+            } catch (error) {
+                console.error(`Error notifying user ${id} about ${user_id} being online:`, error);
+            }
+        });
+    }
+
+    // Clean up when the WebSocket connection closes
+    ws.on('close', () => {
+        const userConnections = clients.get(user_id) || [];
+        const index = userConnections.indexOf(ws);
+        if (index !== -1) {
+            userConnections.splice(index, 1); // Remove the closed connection
+            console.log(`Connection for user_id ${user_id} removed. Remaining: ${userConnections.length}`);
         }
 
-        clients.delete(user_id)
+        // Remove the user_id if no connections remain
+        if (userConnections.length === 0) {
+            clients.delete(user_id);
+            console.log(`All connections for user_id ${user_id} are closed.`);
+        }
 
-        console.log(`Old connection for client ${user_id} replaced by new connection.`)
-    }
+        // Notify other clients about the user's offline status (if no connections remain)
+        if (!clients.has(user_id)) {
+            for (const sockets of clients.values()) {
+                sockets.forEach((socket) => {
+                    try {
+                        socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }));
+                    } catch (error) {
+                        console.error(`Error notifying user about ${user_id} being offline:`, error);
+                    }
+                });
+            }
+        }
+    });
 
-    clients.set(user_id, ws)
+    // console.log(`user_id ${user_id} join`)
 
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
-    }
+    // if (clients.has(user_id)) {
+    //     const oldConn = clients.get(user_id)
+
+    //     try {
+    //         oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
+    //         oldConn.terminate()
+    //     } catch (error) {
+    //         console.error("Error terminating old connection:", error)
+    //     }
+
+    //     clients.delete(user_id)
+
+    //     console.log(`Old connection for client ${user_id} replaced by new connection.`)
+    // }
+
+    // clients.set(user_id, ws)
+
+    // for (const socket of clients.values()) {
+    //     socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
+    // }
 }
 
 async function handleLeave(_, message) {
