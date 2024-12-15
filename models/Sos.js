@@ -5,7 +5,10 @@ module.exports = {
 
     findById: (sosId) => {
         return new Promise((resolve, reject) => {
-            const query = `SELECT user_id, user_agent_id FROM sos WHERE uid = ?`
+            const query = `SELECT s.user_id, s.user_agent_id, sat.name AS status
+            FROM sos s
+            INNER JOIN sos_activity_types sat ON sat.id = s.sos_activity_type 
+            WHERE s.uid = ?`
 
             conn.query(query, [sosId], (e, result) => {
                 if(e) {

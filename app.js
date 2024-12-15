@@ -161,6 +161,7 @@ async function handleConfirmSos(ws, message) {
 
     const sos = await Sos.findById(sos_id)
 
+    var status = sos[0].status
     var senderId = sos[0].user_id
 
     const broadcastToSender = clients.get(senderId)
@@ -181,6 +182,7 @@ async function handleConfirmSos(ws, message) {
             "type": `confirm-sos-${senderId}`,
             "sos_id": sos_id,
             "chat_id": chatId,
+            "status": status,
             "agent_id": agentId,
             "agent_name": agentName,
             "sender_id": senderId,
@@ -193,6 +195,7 @@ async function handleConfirmSos(ws, message) {
     ws.send(JSON.stringify({
         "type": `confirm-sos-${userAgentId}`,
         "sos_id": sos_id,
+        "status": status,
         "chat_id": chatId,
         "agent_id": agentId,
         "agent_name": agentName,
