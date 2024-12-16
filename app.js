@@ -214,9 +214,9 @@ async function handleUserResolvedSos(message) {
     const sos = await Sos.findById(sos_id)
 
     var chats = await Chat.getChatBySosId(sos_id)
-    
+
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].id
+    var ticket = chats.length == 0 ? "-" : chats[0].ticket
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
     const broadcastToRecipient = clients.get(recipientId)
