@@ -80,6 +80,22 @@ module.exports = {
         })
     },
 
+    getChatBySosId: (sosId) => {
+        return new Promise ((resolve, reject) => {
+            const query = `SELECT c.id AS ticket
+            FROM chats c
+            WHERE c.sos_id = ?`
+
+            conn.query(query, [sosId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
     getChats: (senderId) => {
         return new Promise ((resolve, reject) => {
             const query = `SELECT c.uid AS chat_id, p.user_id, p.fullname, p.avatar

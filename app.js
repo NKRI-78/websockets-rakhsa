@@ -53,8 +53,12 @@ wss.on("connection", (ws, request) => {
                 handleSos(ws, parsedMessage)
             break;
             case 'agent-confirm-sos': 
-                handleConfirmSos(ws, parsedMessage)
+                handleAgentConfirmSos(ws, parsedMessage)
             break;
+            case 'user-resolved-sos':
+                handleUserResolvedSos(parsedMessage)
+            case 'agent-closed-sos': 
+                handleAgentClosedSos(parsedMessage)
             case 'finish-sos': 
                 handleFinishSos(ws, parsedMessage)
             break;
@@ -156,13 +160,13 @@ async function handleSos(_, message) {
     })
 } 
 
-async function handleConfirmSos(ws, message) { 
+async function handleAgentConfirmSos(ws, message) { 
     const { sos_id, user_agent_id } = message
 
     const sos = await Sos.findById(sos_id)
 
-    var status = sos[0].status
-    var senderId = sos[0].user_id
+    var status = sos.length == 0 ? '-' : sos[0].status
+    var senderId = sos.length == 0 ? '-' : sos[0].user_id
 
     const broadcastToSender = clients.get(senderId)
 
@@ -204,6 +208,46 @@ async function handleConfirmSos(ws, message) {
     }))
 }
 
+async function handleUserResolvedSos(message) {
+    const { sos_id } = message
+
+    const sos = await Sos.findById(sos_id)
+
+    var chats = await Chat.getChatBySosId(sos_id)
+
+    var ticket = chats.length == 0 ? "-" : chats[0].id
+    var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
+
+    const broadcastToRecipient = clients.get(recipientId)
+
+    if(broadcastToRecipient) {
+        broadcastToRecipient.send(JSON.stringify({
+            "type": `resolved-sos-${recipientId}`,
+            "message": `Case #${ticket} has been resolved`,
+        }))
+    }
+}
+
+async function handleAgentClosedSos(message) {
+    const { sos_id } = message
+
+    const sos = await Sos.findById(sos_id)
+
+    var chats = await Chat.getChatBySosId(sos_id)
+
+    var ticket = chats.length == 0 ? "-" : chats[0].id
+    var senderId = sos.length == 0 ? "-" : sos[0].user_id
+
+    const broadcastToSender = clients.get(senderId)
+
+    if(broadcastToSender) {
+        broadcastToSender.send(JSON.stringify({
+            "type": `closed-sos-${senderId}`,
+            "message": `Case #${ticket} has been closed`,
+        }))
+    }
+}
+
 async function handleFinishSos(ws, message) {
     const { sos_id } = message
 
@@ -230,7 +274,6 @@ async function handleUserFinishSos(ws, message) {
     var sos = await Sos.findById(sos_id)
 
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
-    var userAgentId = sos.length == 0 ? "-" : sos[0].user_id
 
     var recipient = clients.get(userId)
 
