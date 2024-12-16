@@ -82,7 +82,7 @@ module.exports = {
 
     getChatBySosId: (sosId) => {
         return new Promise ((resolve, reject) => {
-            const query = `SELECT c.id AS ticket
+            const query = `SELECT c.id AS ticket, c.uid
             FROM chats c
             WHERE c.sos_id = ?`
 
