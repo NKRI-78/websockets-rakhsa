@@ -50,7 +50,7 @@ wss.on("connection", (ws, request) => {
                 handleMessage(ws, parsedMessage) 
             break;
             case 'sos':
-                handleSos(ws, parsedMessage)
+                handleSos(parsedMessage)
             break;
             case 'agent-confirm-sos': 
                 handleAgentConfirmSos(ws, parsedMessage)
@@ -60,12 +60,6 @@ wss.on("connection", (ws, request) => {
             break;
             case 'agent-closed-sos': 
                 handleAgentClosedSos(ws, parsedMessage)
-            break;
-            case 'finish-sos': 
-                handleFinishSos(ws, parsedMessage)
-            break;
-            case 'user-finish-sos': 
-                handleUserFinishSos(ws, parsedMessage)
             break;
             case 'typing': 
                 handleTyping(parsedMessage)
@@ -95,7 +89,7 @@ wss.on("connection", (ws, request) => {
     }
 })
 
-async function handleSos(_, message) {
+async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message   
 
     var continent = utils.countryCompareContinent("Japan")
@@ -176,9 +170,17 @@ async function handleAgentConfirmSos(ws, message) {
 
     var agentId = agents.length == 0 ? "-" : agents[0].user_id
     var agentName = agents.length == 0 ? "-" : agents[0].username
-    
-    await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
 
+    var checkConversation = await Chat.checkConversation(senderId, userAgentId)
+
+    if(checkConversation.length == 0) {
+        await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
+    } else {
+        chatId = checkConversation[0].uid
+
+        await Chat.updateChat(chatId, sos_id)
+    }
+ 
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
             "type": `confirm-sos-${senderId}`,
@@ -273,48 +275,6 @@ async function handleAgentClosedSos(ws, message) {
         "message": `Case #${ticket} has been closed`,
     }))
 }
-
-async function handleFinishSos(ws, message) {
-    const { sos_id } = message
-
-    var sos = await Sos.findById(sos_id)
-
-    var userId = sos.length == 0 ? "-" : sos[0].user_id
-
-    var recipient = clients.get(userId)
-
-    if(recipient) {
-        recipient.send(JSON.stringify({
-            "type": "finish-sos",
-        }))
-    }
-
-    ws.send(JSON.stringify({
-        "type": "finish-sos",
-    }))
-}
-
-async function handleUserFinishSos(ws, message) {
-    const { sos_id } = message
-
-    var sos = await Sos.findById(sos_id)
-
-    var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
-
-    var recipient = clients.get(userId)
-
-    if(recipient) {
-        recipient.send(JSON.stringify({
-            "type": "user-finish-sos",
-            "sos_id": sos_id
-        }))
-    }
-
-    ws.send(JSON.stringify({
-        "type": "user-finish-sos",
-        "sos_id": sos_id
-    }))
- }
 
 async function handleJoin(ws, message) {
     const { user_id } = message

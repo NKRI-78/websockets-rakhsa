@@ -260,6 +260,20 @@ module.exports = {
         })
     },
 
+    updateChat: (chatId, sosId) => {
+        return new Promise((resolve, reject) => {
+            const query = `UPDATE chats SET sos_id = ? WHERE uid = ?`
+
+            conn.query(query, [sosId, chatId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
     insertActivities: (uid, chatId, userId) => {
         return new Promise((resolve, reject) => {
             const query = `INSERT INTO chat_activities (uid, user_id, chat_id, is_active) 
