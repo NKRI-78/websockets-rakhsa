@@ -239,7 +239,7 @@ async function handleAgentClosedSos(message) {
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].id
+    var ticket = chats.length == 0 ? "-" : chats[0].ticket
     var senderId = sos.length == 0 ? "-" : sos[0].user_id
 
     const broadcastToSender = clients.get(senderId)
