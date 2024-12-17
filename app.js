@@ -243,7 +243,7 @@ async function handleAgentClosedSos(message) {
     var senderId = sos.length == 0 ? "-" : sos[0].user_id
 
     const broadcastToSender = clients.get(senderId)
-
+    
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
             "type": `closed-sos-${senderId}`,
