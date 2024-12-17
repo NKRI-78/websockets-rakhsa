@@ -56,9 +56,9 @@ wss.on("connection", (ws, request) => {
                 handleAgentConfirmSos(ws, parsedMessage)
             break;
             case 'user-resolved-sos':
-                handleUserResolvedSos(parsedMessage)
+                handleUserResolvedSos(ws, parsedMessage)
             case 'agent-closed-sos': 
-                handleAgentClosedSos(parsedMessage)
+                handleAgentClosedSos(ws, parsedMessage)
             case 'finish-sos': 
                 handleFinishSos(ws, parsedMessage)
             break;
@@ -205,7 +205,7 @@ async function handleAgentConfirmSos(ws, message) {
     }))
 }
 
-async function handleUserResolvedSos(message) {
+async function handleUserResolvedSos(ws, message) {
     const { sos_id } = message
 
     const sos = await Sos.findById(sos_id)
@@ -214,9 +214,11 @@ async function handleUserResolvedSos(message) {
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
     var ticket = chats.length == 0 ? "-" : chats[0].ticket
+
+    var userId = sos.length == 0 ? "-" : sos[0].user_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
-    await Sos.moveSosToClosed(sos_id)
+    await Sos.moveSosToResolved(sos_id)
 
     const broadcastToRecipient = clients.get(recipientId)
 
@@ -225,12 +227,19 @@ async function handleUserResolvedSos(message) {
             "type": `resolved-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Case #${ticket} has been closed`,
+            "message": `Case #${ticket} has been resolved`,
         }))
     }
+
+    ws.send(JSON.stringify({
+        "type": `resolved-sos-${userId}`,
+        "chat_id": chatId,
+        "sos_id": sos_id,
+        "message": `Case #${ticket} has been resolved`,
+    }))
 }
 
-async function handleAgentClosedSos(message) {
+async function handleAgentClosedSos(ws, message) {
     const { sos_id } = message
 
     const sos = await Sos.findById(sos_id)
@@ -239,20 +248,29 @@ async function handleAgentClosedSos(message) {
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
     var ticket = chats.length == 0 ? "-" : chats[0].ticket
-    var senderId = sos.length == 0 ? "-" : sos[0].user_id
 
-    await Sos.moveSosToResolved(sos_id)
+    var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
+    var recipientId = sos.length == 0 ? "-" : sos[0].user_id
 
-    const broadcastToSender = clients.get(senderId)
+    await Sos.moveSosToClosed(sos_id)
+
+    const broadcastToRecipient = clients.get(recipientId)
     
-    if(broadcastToSender) {
-        broadcastToSender.send(JSON.stringify({
-            "type": `closed-sos-${senderId}`,
+    if(broadcastToRecipient) {
+        broadcastToRecipient.send(JSON.stringify({
+            "type": `closed-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Case #${ticket} has been resolved`,
+            "message": `Case #${ticket} has been closed`,
         }))
     }
+
+    ws.send(JSON.stringify({
+        "type": `closed-sos-${userId}`,
+        "chat_id": chatId,
+        "sos_id": sos_id,
+        "message": `Case #${ticket} has been resolved`,
+    }))
 }
 
 async function handleFinishSos(ws, message) {
