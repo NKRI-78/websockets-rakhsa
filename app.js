@@ -77,9 +77,6 @@ wss.on("connection", (ws, request) => {
             case 'contact': 
                 handleContact(ws, parsedMessage)
             break
-            case 'get-chat': 
-                handleGetChat(ws, parsedMessage)
-            break
             default:
                 break;
         }
@@ -219,6 +216,8 @@ async function handleUserResolvedSos(message) {
     var ticket = chats.length == 0 ? "-" : chats[0].ticket
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
+    await Sos.moveSosToResolved(sos_id)
+
     const broadcastToRecipient = clients.get(recipientId)
 
     if(broadcastToRecipient) {
@@ -241,6 +240,8 @@ async function handleAgentClosedSos(message) {
     var chatId = chats.length == 0 ? "-" : chats[0].uid
     var ticket = chats.length == 0 ? "-" : chats[0].ticket
     var senderId = sos.length == 0 ? "-" : sos[0].user_id
+
+    await Sos.moveSosToClosed(sos_id)
 
     const broadcastToSender = clients.get(senderId)
     
@@ -374,29 +375,6 @@ async function handleAckRead(ws, message) {
     }))
 }
 
-async function handleGetChat(ws, message) {
-    const { sender } = message
-
-    var chats = await Chat.getChats(sender)
-
-    var data = []
-
-    for (var i in chats) {
-        var chat = chats[i]
-
-        data.push({
-            chat_id: chat.uid,
-            user: {
-                id: chat.user_id,
-                avatar: chat.avatar,
-                name: chat.name
-            }
-        })
-    }
-
-    ws.send(JSON.stringify({ type: 'get-chat' }))
-}
-
 async function handleMessage(ws, message) {
     const { chat_id, sender, recipient, text } = message
 
@@ -480,26 +458,6 @@ async function handleMessage(ws, message) {
         })
     )
 
-}
-
-async function handleContact(ws, message) {
-    const { sender } = message
-
-    var contacts = await Chat.getContact(sender)
-
-    var users = []
-
-    for (var i in contacts) {
-        var contact = contacts[i]
-
-        users.push({
-            id: contact.uid,
-            image: contact.image,
-            name: contact.name, 
-        })
-    }    
-
-    ws.send(JSON.stringify({type: 'contact', users}))
 }
 
 // Ping all connected clients periodically
