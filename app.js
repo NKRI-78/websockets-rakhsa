@@ -268,7 +268,7 @@ async function handleAgentClosedSos(ws, message) {
         "type": `closed-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Case #${ticket} has been resolved`,
+        "message": `Case #${ticket} has been closed`,
     }))
 }
 
