@@ -57,8 +57,10 @@ wss.on("connection", (ws, request) => {
             break;
             case 'user-resolved-sos':
                 handleUserResolvedSos(ws, parsedMessage)
+            break;
             case 'agent-closed-sos': 
                 handleAgentClosedSos(ws, parsedMessage)
+            break;
             case 'finish-sos': 
                 handleFinishSos(ws, parsedMessage)
             break;
