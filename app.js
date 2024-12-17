@@ -82,7 +82,6 @@ wss.on("connection", (ws, request) => {
         }
     })
  
-    // Handle client disconnection
     ws.on("close", () => {
         console.log("Server disconnect")
         
@@ -448,9 +447,9 @@ async function handleMessage(ws, message) {
 
     } else {
 
-    // Handle the case when the recipient is not connected
-    // You can implement different logic, e.g., store the message for later retrieval
-    
+        // Handle the case when the recipient is not connected
+        // You can implement different logic, e.g., store the message for later retrieval
+
     }
 
     ws.send(
@@ -479,6 +478,7 @@ async function handleMessage(ws, message) {
 }
 
 // Ping all connected clients periodically
+
 setInterval(() => {
     wss.clients.forEach((ws) => {
         if (!ws.isAlive) {
@@ -519,7 +519,7 @@ function handleDisconnect(ws) {
 
 //     if (sos.length > 0) {
 //         var sosId = sos[0].uid
-//         await Sos.moveSosToRecently(sosId)
+//         ?
 //     }
 // })
 
