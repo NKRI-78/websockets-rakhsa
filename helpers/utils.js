@@ -50,7 +50,7 @@ module.exports = {
     },
 
     formatDate: (date) => {
-        return moment(date).locale('id').format('yyyy/MM/DD')
+        return moment(date).locale('id').format('yyyy-MM-DD')
     },
 
     formatDateWithSubtractDays: (date, d) => {
