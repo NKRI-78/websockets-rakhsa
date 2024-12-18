@@ -103,6 +103,8 @@ async function handleSos(message) {
         sosType = 2 
     }
 
+    var createdAt = moment().tz("Asia/Jakarta").format('yyyy-MM-DD')
+
     const platformType = platform_type == "raksha" ? 1 : 2
 
     await Sos.broadcast(
@@ -139,6 +141,7 @@ async function handleSos(message) {
                         media_type: sosType == 1 
                         ? "image" 
                         : "video",
+                        created_at: createdAt,
                         country: country,
                         location: location,
                         time: time,
