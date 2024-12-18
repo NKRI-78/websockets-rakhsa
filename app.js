@@ -392,7 +392,7 @@ async function handleMessage(ws, message) {
                     id: msgId,
                     chat_id: chat_id,
                     room: `${recipientId}-${senderId}`,
-                    pair_room: `${senderId}`,
+                    pair_room: senderId,
                     user: {
                         id: recipientId,
                         name: recipientName, 
@@ -424,7 +424,7 @@ async function handleMessage(ws, message) {
                 id: msgId,
                 chat_id: chat_id,
                 room: `${senderId}-${recipientId}`,
-                pair_room: `${recipientId}`,
+                pair_room: recipientId,
                 user: {
                     id: senderId,
                     name: senderName, 
