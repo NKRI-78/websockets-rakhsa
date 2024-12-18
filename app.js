@@ -233,7 +233,7 @@ async function handleUserResolvedSos(ws, message) {
             "type": `resolved-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Case #${ticket} has been resolved`,
+            "message": `Terima kasih telah menggunakan layanan Raksha.`,
         }))
     }
 
@@ -241,7 +241,7 @@ async function handleUserResolvedSos(ws, message) {
         "type": `resolved-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Case #${ticket} has been resolved`,
+        "message": `Terima kasih telah menggunakan layanan Raksha.`,
     }))
 }
 
@@ -267,7 +267,7 @@ async function handleAgentClosedSos(ws, message) {
             "type": `closed-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Case #${ticket} has been closed`,
+            "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
         }))
     }
 
@@ -275,7 +275,7 @@ async function handleAgentClosedSos(ws, message) {
         "type": `closed-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Case #${ticket} has been closed`,
+        "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
     }))
 }
 
