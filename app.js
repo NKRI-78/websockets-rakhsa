@@ -386,10 +386,12 @@ async function handleMessage(ws, message) {
 
         recipientSocket.send(
             JSON.stringify({ 
-                type: `fetch-message-${chat_id}`,
+                type: `fetch-message`,
                 data: {
                     id: msgId,
                     chat_id: chat_id,
+                    room: `${recipientId}-${senderId}`,
+                    pair_room: `${senderId}`,
                     user: {
                         id: recipientId,
                         name: recipientName, 
@@ -416,10 +418,12 @@ async function handleMessage(ws, message) {
 
     ws.send(
         JSON.stringify({ 
-            type: `fetch-message-${chat_id}`,
+            type: `fetch-message`,
             data: {
                 id: msgId,
                 chat_id: chat_id,
+                room: `${senderId}-${recipientId}`,
+                pair_room: `${recipientId}`,
                 user: {
                     id: senderId,
                     name: senderName, 
