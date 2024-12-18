@@ -364,7 +364,7 @@ async function handleAckRead(ws, message) {
 }
 
 async function handleMessage(ws, message) {
-    const { chat_id, sender, recipient, text } = message
+    const { sender, recipient, text } = message
 
     var msgId = uuidv4()
 
@@ -387,7 +387,11 @@ async function handleMessage(ws, message) {
     var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
     var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
 
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
+    var chats = await Chat.checkConversation(sender, recipient)
+
+    var chatId = chats.length == 0 ? uuidv4() : chats[0].uid;
+
+    await Chat.insertMessage(msgId, chatId, sender, recipient, text)
 
     const recipientSocket = clients.get(recipient)
 
@@ -398,7 +402,7 @@ async function handleMessage(ws, message) {
                 type: `fetch-message`,
                 data: {
                     id: msgId,
-                    chat_id: chat_id,
+                    chat_id: chatId,
                     room: `${recipient}-${sender}`,
                     pair_room: sender,
                     user: {
@@ -430,7 +434,7 @@ async function handleMessage(ws, message) {
             type: `fetch-message`,
             data: {
                 id: msgId,
-                chat_id: chat_id,
+                chat_id: chatId,
                 room: `${sender}-${recipient}`,
                 pair_room: recipient,
                 user: {
