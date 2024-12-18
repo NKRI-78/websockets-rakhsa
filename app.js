@@ -399,7 +399,7 @@ async function handleMessage(ws, message) {
                 data: {
                     id: msgId,
                     chat_id: chat_id,
-                    room: `${sender}-${recipient}`,
+                    room: `${recipient}-${sender}`,
                     pair_room: sender,
                     user: {
                         id: recipientId,
