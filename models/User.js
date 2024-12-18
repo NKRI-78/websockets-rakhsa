@@ -19,13 +19,13 @@ module.exports = {
         })
     },
 
-    getProfile: (userId) => {
+    getProfile: (data) => {
         return new Promise((resolve, reject) => {
             const query = `SELECT p.user_id, p.avatar, p.fullname AS username
             FROM profiles p
             WHERE p.user_id = ?`
 
-            conn.query(query, [userId], (e, result) => {
+            conn.query(query, [data.user_id], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {

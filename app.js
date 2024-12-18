@@ -122,7 +122,11 @@ async function handleSos(message) {
         if (client.readyState === WebSocketServer.OPEN) {
             for (var i in agents) {
 
-                const sender = await User.getProfile(user_id)
+                var dataGetProfile = {
+                    user_id: user_id
+                }
+
+                const sender = await User.getProfile(dataGetProfile)
 
                 if(agents[i].user_id == userId) {
                     var senderId = user_id
@@ -165,9 +169,13 @@ async function handleAgentConfirmSos(ws, message) {
 
     var userAgentId = user_agent_id
 
+    var dataGetProfile = {
+        user_id: userAgentId
+    }
+
     var chatId = uuidv4()
 
-    var agents = await User.getProfile(userAgentId)
+    var agents = await User.getProfile(dataGetProfile)
 
     var agentId = agents.length == 0 ? "-" : agents[0].user_id
     var agentName = agents.length == 0 ? "-" : agents[0].username
@@ -391,8 +399,8 @@ async function handleMessage(ws, message) {
                 data: {
                     id: msgId,
                     chat_id: chat_id,
-                    room: `${recipientId}-${senderId}`,
-                    pair_room: senderId,
+                    room: `${recipient}-${sender}`,
+                    pair_room: recipient,
                     user: {
                         id: recipientId,
                         name: recipientName, 
@@ -423,8 +431,8 @@ async function handleMessage(ws, message) {
             data: {
                 id: msgId,
                 chat_id: chat_id,
-                room: `${senderId}-${recipientId}`,
-                pair_room: recipientId,
+                room: `${sender}-${recipient}`,
+                pair_room: sender,
                 user: {
                     id: senderId,
                     name: senderName, 
