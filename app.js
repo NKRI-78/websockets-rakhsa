@@ -192,7 +192,7 @@ async function handleAgentConfirmSos(ws, message) {
  
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
-            "type": `confirm-sos-${senderId}`,
+            "type": `confirm-sos`,
             "sos_id": sos_id,
             "chat_id": chatId,
             "status": status,
@@ -206,7 +206,7 @@ async function handleAgentConfirmSos(ws, message) {
     await Sos.approvalConfirm(sos_id, userAgentId)
 
     ws.send(JSON.stringify({
-        "type": `confirm-sos-${userAgentId}`,
+        "type": `confirm-sos`,
         "sos_id": sos_id,
         "status": status,
         "chat_id": chatId,
