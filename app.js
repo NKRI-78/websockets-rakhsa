@@ -403,8 +403,8 @@ async function handleMessage(ws, message) {
                 data: {
                     id: msgId,
                     chat_id: chatId,
-                    room: `${recipient}-${sender}`,
-                    pair_room: sender,
+                    room: `${sender}-${recipient}`,
+                    pair_room: recipient,
                     user: {
                         id: recipientId,
                         name: recipientName, 
