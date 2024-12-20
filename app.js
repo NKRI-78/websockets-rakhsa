@@ -403,7 +403,6 @@ async function handleMessage(ws, message) {
                 data: {
                     id: msgId,
                     chat_id: chatId,
-                    room: `${sender}-${recipient}`,
                     pair_room: recipient,
                     user: {
                         id: recipientId,
@@ -435,8 +434,7 @@ async function handleMessage(ws, message) {
             data: {
                 id: msgId,
                 chat_id: chatId,
-                room: `${sender}-${recipient}`,
-                pair_room: recipient,
+                pair_room: sender,
                 user: {
                     id: senderId,
                     name: senderName, 
