@@ -143,6 +143,7 @@ async function handleSos(message) {
                         media_type: sosType == 1 
                         ? "image" 
                         : "video",
+                        created: moment(new Date()).locale('id').format('YYYY-MM-DD'),
                         created_at: new Date(),
                         country: country,
                         location: location,
