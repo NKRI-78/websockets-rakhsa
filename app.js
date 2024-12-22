@@ -400,7 +400,7 @@ async function handleMessage(ws, message) {
 
         recipientSocket.send(
             JSON.stringify({ 
-                type: `fetch-message-${chatId}`,
+                type: `fetch-message`,
                 data: {
                     id: msgId,
                     chat_id: chatId,
@@ -431,7 +431,7 @@ async function handleMessage(ws, message) {
 
     ws.send(
         JSON.stringify({ 
-            type: `fetch-message-${chatId}`,
+            type: `fetch-message`,
             data: {
                 id: msgId,
                 chat_id: chatId,
