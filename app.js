@@ -225,12 +225,13 @@ async function handleUserResolvedSos(ws, message) {
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].ticket
 
     var userId = sos.length == 0 ? "-" : sos[0].user_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
     await Sos.moveSosToResolved(sos_id)
+    
+    await Sos.updateExpireMessages(chatId)
 
     const broadcastToRecipient = clients.get(recipientId)
 
@@ -264,6 +265,8 @@ async function handleAgentClosedSos(ws, message) {
     var recipientId = sos.length == 0 ? "-" : sos[0].user_id
 
     await Sos.moveSosToClosed(sos_id)
+
+    await Sos.updateExpireMessages(chatId)
 
     const broadcastToRecipient = clients.get(recipientId)
     
