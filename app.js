@@ -252,14 +252,13 @@ async function handleUserResolvedSos(ws, message) {
 }
 
 async function handleAgentClosedSos(ws, message) {
-    const { sos_id } = message
+    const { sos_id, note } = message
 
     const sos = await Sos.findById(sos_id)
 
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].ticket
 
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_id
@@ -273,7 +272,7 @@ async function handleAgentClosedSos(ws, message) {
             "type": `closed-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
+            "message": note,
         }))
     }
 
@@ -281,7 +280,7 @@ async function handleAgentClosedSos(ws, message) {
         "type": `closed-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
+        "message": note,
     }))
 }
 
@@ -454,13 +453,11 @@ async function handleMessage(ws, message) {
 
 }
 
-// Ping all connected clients periodically
-
 setInterval(() => {
     wss.clients.forEach((ws) => {
         if (!ws.isAlive) {
             console.log("Terminating a dead connection");
-            return ws.terminate(); // Close the connection if no pong received
+            return ws.terminate(); 
         }
 
         ws.isAlive = false;
