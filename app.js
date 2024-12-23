@@ -143,7 +143,6 @@ async function handleSos(message) {
                         media_type: sosType == 1 
                         ? "image" 
                         : "video",
-                        created: moment(new Date()).locale('id').format('YYYY-MM-DD'),
                         created_at: new Date(),
                         country: country,
                         location: location,
@@ -400,7 +399,7 @@ async function handleMessage(ws, message) {
 
         recipientSocket.send(
             JSON.stringify({ 
-                type: `fetch-message-${chatId}`,
+                type: `fetch-message`,
                 data: {
                     id: msgId,
                     chat_id: chatId,
@@ -431,7 +430,7 @@ async function handleMessage(ws, message) {
 
     ws.send(
         JSON.stringify({ 
-            type: `fetch-message-${chatId}`,
+            type: `fetch-message`,
             data: {
                 id: msgId,
                 chat_id: chatId,
