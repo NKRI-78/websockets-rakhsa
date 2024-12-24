@@ -353,7 +353,7 @@ async function handleJoin(ws, message) {
 
     clients.set(user_id, ws)
 
-    deliverQueuedMessages(ws, user_id);
+    deliverQueuedMessages(ws, user_id)
 
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
