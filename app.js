@@ -78,6 +78,8 @@ wss.on("connection", (ws, _) => {
 
     ws.onerror = function () {
         console.log("Some error occurred")
+        
+        handleDisconnect(ws)
     }
 })
 
@@ -353,7 +355,7 @@ async function handleJoin(ws, message) {
 
     clients.set(user_id, ws)
 
-    // deliverQueuedMessages(ws, user_id)
+    deliverQueuedMessages(ws, user_id)
 
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
@@ -517,27 +519,6 @@ function handleDisconnect(ws) {
         }
     }
 }
-
-// GET USER ONLINE
-// function notifyUser(status) {
-//     const users = Array.from(clients.keys());
-//     for (const socket of clients.values()) {
-//       socket.send(JSON.stringify({ type: status, users: users }))
-//     }
-// }
-
-// var CronJob = cron.CronJob
-
-// const taskSosExpireAfter1MinuteNotReact = new CronJob('* * * * *', async () => {
-//     var sos = await Sos.checkExpireSos()
-
-//     if (sos.length > 0) {
-//         var sosId = sos[0].uid
-//         ?
-//     }
-// })
-
-// taskSosExpireAfter1MinuteNotReact.start()
 
 async function leave(user_id) {
     for (const socket of clients.values()) {
