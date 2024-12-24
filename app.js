@@ -29,9 +29,6 @@ wss.on("connection", (ws, _) => {
         const parsedMessage = JSON.parse(message)
 
         switch (parsedMessage.type) {
-            case 'ping':
-                ws.send(JSON.stringify({ type: "pong" }));
-            break;
             case 'join':
                 handleJoin(ws, parsedMessage)
             break;
@@ -82,73 +79,66 @@ wss.on("connection", (ws, _) => {
 })
 
 async function handleSos(message) {
-    const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message   
+    const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
 
-    var continent = utils.countryCompareContinent("Japan")
-    var agents = await Agent.userAgent(continent)
+    try {
+        // Determine the continent
+        const continent = utils.countryCompareContinent("Japan");
+        
+        // Fetch agents based on continent
+        const agents = await Agent.userAgent(continent);
 
-    var sosType
+        // Determine SOS type based on file extension
+        const sosType = ext === "jpg" ? 1 : 2;
 
-    if(ext == "jpg") {
-        sosType = 1
-    } else {
-        sosType = 2 
-    }
+        // Determine platform type (1 for raksha, 2 for others)
+        const platformType = platform_type === "raksha" ? 1 : 2;
 
-    const platformType = platform_type == "raksha" ? 1 : 2
+        // Broadcast SOS message to clients
+        await Sos.broadcast(
+            sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType
+        );
 
-    await Sos.broadcast(
-        sos_id, 
-        user_id,
-        location,
-        media,
-        sosType,
-        lat, 
-        lng,
-        country,
-        time,
-        platformType
-    )
+        // Fetch user profile once and map agents to profiles to reduce duplicate API calls
+        const dataGetProfile = { user_id };
+        const sender = await User.getProfile(dataGetProfile);
+        const senderName = sender.length === 0 ? "-" : sender[0].username;
+        const senderId = user_id;
 
-    clients.forEach(async (client, userId) => {
-        if (client.readyState === WebSocketServer.OPEN) {
-            for (var i in agents) {
-
-                var dataGetProfile = {
-                    user_id: user_id
-                }
-
-                const sender = await User.getProfile(dataGetProfile)
-
-                if(agents[i].user_id == userId) {
-                    var senderId = user_id
-                    var senderName = sender.length == 0 ? "-" : sender[0].username
-                    
-                    client.send(JSON.stringify({
+        // Send SOS updates to clients
+        for (const [userId, client] of clients) {
+            if (client.readyState === WebSocketServer.OPEN) {
+                // Filter relevant agents
+                const relevantAgent = agents.find(agent => agent.user_id === userId);
+                if (relevantAgent) {
+                    const payload = {
                         type: "sos",
                         id: sos_id,
                         sender: {
                             id: senderId,
                             name: senderName
-                        },  
-                        media: media,
-                        media_type: sosType == 1 
-                        ? "image" 
-                        : "video",
+                        },
+                        media,
+                        media_type: sosType === 1 ? "image" : "video",
                         created: utils.formatDateWithSos(new Date()),
                         created_at: utils.formatDateWithSos(new Date()),
-                        country: country,
-                        location: location,
-                        time: time,
-                        lat: lat, 
-                        lng: lng,
-                        platform_type: platform_type
-                    }))
+                        country,
+                        location,
+                        time,
+                        lat,
+                        lng,
+                        platform_type
+                    };
+                    client.send(JSON.stringify(payload));
                 }
             }
         }
-    })
-} 
+    } catch (error) {
+        console.error('Error handling SOS:', error);
+        // Optional: handle errors, maybe send a failure response to a client or log more details
+    }
+}
+
 
 async function handleAgentConfirmSos(ws, message) { 
     const { sos_id, user_agent_id } = message
@@ -509,21 +499,15 @@ function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
         if (socket === ws) {
 
-            leave(user_id)
-
             clients.delete(user_id)
+
+            socket.send(JSON.stringify({ type: 'user_offline', user_id: user_id }))
             
             break;
         }
     }
 }
 
-async function leave(user_id) {
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: 'leave', user_id: user_id }))
-    }
-}
-  
 server.listen(process.env.PORT, function () {
     console.log(`Listening on port ${process.env.PORT}`)
 })
