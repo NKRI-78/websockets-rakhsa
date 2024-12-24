@@ -67,6 +67,20 @@ module.exports = {
         })
     },
 
+    updateExpireMessages: (chatId) => {
+        return new Promise ((resolve, reject) => {
+            var query = `UPDATE messages SET is_expired = 1 WHERE chat_id = ?`
+
+            conn.query(query, [chatId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
     moveSosToResolved: (sosId) => {
         return new Promise((resolve, reject) => {
             const query = `UPDATE sos SET sos_activity_type = 4 WHERE uid = ?`

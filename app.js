@@ -143,7 +143,6 @@ async function handleSos(message) {
                         media_type: sosType == 1 
                         ? "image" 
                         : "video",
-                        created: moment(new Date()).locale('id').format('YYYY-MM-DD'),
                         created_at: new Date(),
                         country: country,
                         location: location,
@@ -161,6 +160,8 @@ async function handleSos(message) {
 async function handleAgentConfirmSos(ws, message) { 
     const { sos_id, user_agent_id } = message
 
+    var chatId = uuidv4()
+
     const sos = await Sos.findById(sos_id)
 
     var status = sos.length == 0 ? '-' : sos[0].status
@@ -173,8 +174,6 @@ async function handleAgentConfirmSos(ws, message) {
     var dataGetProfileAgent = {
         user_id: userAgentId
     }
-
-    var chatId = uuidv4()
 
     var agents = await User.getProfile(dataGetProfileAgent)
 
@@ -246,11 +245,24 @@ async function handleUserResolvedSos(ws, message) {
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-   
     var userId = sos.length == 0 ? "-" : sos[0].user_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
     await Sos.moveSosToResolved(sos_id)
+    
+    await Sos.updateExpireMessages(chatId)
+
+    var dataFcm = {
+        user_id: userId
+    }
+
+    var fcms = await User.getFcm(dataFcm)
+
+    var token = fcms.length == 0 
+    ? "-" 
+    : fcms[0].token
+
+    await utils.sendFCM(`Anda telah menyelesaikan kasus ini`, `Terima kasih telah menggunakan layanan Raksha`, token, "agent-confirm-sos")
 
     const broadcastToRecipient = clients.get(recipientId)
 
@@ -259,7 +271,7 @@ async function handleUserResolvedSos(ws, message) {
             "type": `resolved-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Terima kasih telah menggunakan layanan Raksha.`,
+            "message": `Terima kasih telah menggunakan layanan Raksha`,
         }))
     }
 
@@ -267,24 +279,45 @@ async function handleUserResolvedSos(ws, message) {
         "type": `resolved-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Terima kasih telah menggunakan layanan Raksha.`,
+        "message": `Terima kasih telah menggunakan layanan Raksha`,
     }))
 }
 
 async function handleAgentClosedSos(ws, message) {
-    const { sos_id } = message
+    const { sos_id, note } = message
 
     const sos = await Sos.findById(sos_id)
 
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].ticket
 
     var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_id
 
     await Sos.moveSosToClosed(sos_id)
+    
+    await Sos.updateExpireMessages(chatId)
+    
+    var dataFcm = {
+        user_id: recipientId
+    }
+
+    var fcms = await User.getFcm(dataFcm)
+
+    var token = fcms.length == 0 
+    ? "-" 
+    : fcms[0].token
+
+    var dataGetProfileAgent = {
+        user_id: recipientId
+    }
+
+    var agents = await User.getProfile(dataGetProfileAgent)
+
+    var agentName = agents.length == 0 ? "-" : agents[0].username
+
+    await utils.sendFCM(`${agentName} telah menutup kasus ini`, note, token, "agent-closed-sos")
 
     const broadcastToRecipient = clients.get(recipientId)
     
@@ -293,7 +326,7 @@ async function handleAgentClosedSos(ws, message) {
             "type": `closed-sos-${recipientId}`,
             "chat_id": chatId,
             "sos_id": sos_id,
-            "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
+            "message": note,
         }))
     }
 
@@ -301,7 +334,7 @@ async function handleAgentClosedSos(ws, message) {
         "type": `closed-sos-${userId}`,
         "chat_id": chatId,
         "sos_id": sos_id,
-        "message": `Terima kasih telah menggunakan layanan Raksha. Admin telah mengakhiri sesi`,
+        "message": note,
     }))
 }
 
@@ -474,13 +507,11 @@ async function handleMessage(ws, message) {
 
 }
 
-// Ping all connected clients periodically
-
 setInterval(() => {
     wss.clients.forEach((ws) => {
         if (!ws.isAlive) {
             console.log("Terminating a dead connection");
-            return ws.terminate(); // Close the connection if no pong received
+            return ws.terminate(); 
         }
 
         ws.isAlive = false;
