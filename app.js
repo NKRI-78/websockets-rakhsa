@@ -82,34 +82,26 @@ async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
 
     try {
-        // Determine the continent
         const continent = utils.countryCompareContinent("Japan");
         
-        // Fetch agents based on continent
         const agents = await Agent.userAgent(continent);
 
-        // Determine SOS type based on file extension
         const sosType = ext === "jpg" ? 1 : 2;
 
-        // Determine platform type (1 for raksha, 2 for others)
-        const platformType = platform_type === "raksha" ? 1 : 2;
+        const platformType = platform_type === "raksha" ? 1 : 2
 
-        // Broadcast SOS message to clients
         await Sos.broadcast(
             sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType
         );
 
-        // Fetch user profile once and map agents to profiles to reduce duplicate API calls
-        const dataGetProfile = { user_id };
-        const sender = await User.getProfile(dataGetProfile);
-        const senderName = sender.length === 0 ? "-" : sender[0].username;
+        const dataGetProfile = { user_id }
+        const sender = await User.getProfile(dataGetProfile)
+        const senderName = sender.length === 0 ? "-" : sender[0].username
         const senderId = user_id;
 
-        // Send SOS updates to clients
         for (const [userId, client] of clients) {
             if (client.readyState === WebSocketServer.OPEN) {
-                // Filter relevant agents
-                const relevantAgent = agents.find(agent => agent.user_id === userId);
+                const relevantAgent = agents.find(agent => agent.user_id === userId)
                 if (relevantAgent) {
                     const payload = {
                         type: "sos",
@@ -128,14 +120,13 @@ async function handleSos(message) {
                         lat,
                         lng,
                         platform_type
-                    };
-                    client.send(JSON.stringify(payload));
+                    }
+                    client.send(JSON.stringify(payload))
                 }
             }
         }
     } catch (error) {
-        console.error('Error handling SOS:', error);
-        // Optional: handle errors, maybe send a failure response to a client or log more details
+        console.error('Error handling SOS:', error)
     }
 }
 
@@ -183,15 +174,7 @@ async function handleAgentConfirmSos(ws, message) {
 
     await utils.sendFCM(`${agentName} telah terhubung dengan Anda`, `Halo ${senderName}`, token, "agent-confirm-sos")
 
-    var checkConversation = await Chat.checkConversation(senderId, userAgentId)
-
-    if(checkConversation.length == 0) {
-        await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
-    } else {
-        chatId = checkConversation[0].uid
-
-        await Chat.updateChat(chatId, sos_id)
-    }
+    await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
  
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
