@@ -469,7 +469,6 @@ async function handleMessage(ws, message) {
         messageQueue.get(recipient).push(messageData);
     }
 
-    // Acknowledge the sender
     ws.send(
         JSON.stringify({
             type: `fetch-message`,
@@ -499,7 +498,7 @@ function deliverQueuedMessages(recipientSocket, recipientId) {
     if (messageQueue.has(recipientId)) {
         const queuedMessages = messageQueue.get(recipientId);
         queuedMessages.forEach((msg) => {
-            recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }));
+            recipientSocket.send(JSON.stringify({ type: "message", data: msg }));
         });
         messageQueue.delete(recipientId);
     }
