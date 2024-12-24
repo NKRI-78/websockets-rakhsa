@@ -353,6 +353,8 @@ async function handleJoin(ws, message) {
 
     clients.set(user_id, ws)
 
+    deliverQueuedMessages(ws, user_id);
+
     for (const socket of clients.values()) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
     }
@@ -409,73 +411,67 @@ async function handleAckRead(ws, message) {
     }))
 }
 
+const messageQueue = new Map(); 
+
 async function handleMessage(ws, message) {
-    const { sender, recipient, text } = message
+    const { sender, recipient, text } = message;
+    const msgId = uuidv4();
 
-    var msgId = uuidv4()
+    const [userSenders, userRecipients] = await Promise.all([
+        User.getProfile({ user_id: sender }),
+        User.getProfile({ user_id: recipient })
+    ]);
 
-    var dataSender = {
-        user_id: sender
-    }
+    const senderId = userSenders.length == 0 ? "-" : userSenders[0].user_id;
+    const senderName = userSenders.length == 0 ? "-" : userSenders[0].username;
+    const senderAvatar = userSenders.length == 0 ? "-" : userSenders[0].avatar;
 
-    var dataRecipient = {
-        user_id: recipient
-    }
+    const recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id;
+    const recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username;
+    const recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar;
 
-    var userSenders = await User.getProfile(dataSender)
-    var userRecipients = await User.getProfile(dataRecipient)
+    const chats = await Chat.checkConversation(sender, recipient);
+    const chatId = chats.length == 0 ? uuidv4() : chats[0].uid;
 
-    var senderId = userSenders.length == 0 ? "-" : userSenders[0].user_id
-    var senderName = userSenders.length == 0 ? "-" : userSenders[0].username
-    var senderAvatar = userSenders.length == 0 ? "-" : userSenders[0].avatar
+    await Chat.insertMessage(msgId, chatId, sender, recipient, text);
 
-    var recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id
-    var recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username
-    var recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar
+    const fcms = await User.getFcm({ user_id: recipientId });
+    const token = fcms.length == 0 ? "-" : fcms[0].token;
 
-    var chats = await Chat.checkConversation(sender, recipient)
+    const messageData = {
+        id: msgId,
+        chat_id: chatId,
+        pair_room: recipient,
+        user: {
+            id: recipientId,
+            name: recipientName,
+            avatar: recipientAvatar,
+            is_me: false,
+        },
+        sender: {
+            id: senderId,
+        },
+        is_read: false,
+        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+        text: text,
+        type: "text"
+    };
 
-    var chatId = chats.length == 0 ? uuidv4() : chats[0].uid;
-
-    await Chat.insertMessage(msgId, chatId, sender, recipient, text)
-
-    const recipientSocket = clients.get(recipient)
+    const recipientSocket = clients.get(recipient);
 
     if (recipientSocket) {
-
-        recipientSocket.send(
-            JSON.stringify({ 
-                type: `fetch-message`,
-                data: {
-                    id: msgId,
-                    chat_id: chatId,
-                    pair_room: recipient,
-                    user: {
-                        id: recipientId,
-                        name: recipientName, 
-                        avatar: recipientAvatar,
-                        is_me: false,
-                    },
-                    sender: {
-                        id: senderId,
-                    },
-                    is_read: true,
-                    sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-                    text: text,
-                    type: "text"
-                }
-            })
-        )
-
+        await utils.sendFCM(senderName, text, token, "send-msg");
+        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: messageData }));
     } else {
-
-        // Handle the case when the recipient is not connected
-        // You can implement different logic, e.g., store the message for later retrieval
-
+        if (!messageQueue.has(recipient)) {
+            messageQueue.set(recipient, []);
+        }
+        messageQueue.get(recipient).push(messageData);
     }
 
+    // Acknowledge the sender
     ws.send(
-        JSON.stringify({ 
+        JSON.stringify({
             type: `fetch-message`,
             data: {
                 id: msgId,
@@ -483,7 +479,7 @@ async function handleMessage(ws, message) {
                 pair_room: sender,
                 user: {
                     id: senderId,
-                    name: senderName, 
+                    name: senderName,
                     avatar: senderAvatar,
                     is_me: true,
                 },
@@ -496,9 +492,19 @@ async function handleMessage(ws, message) {
                 type: "text"
             }
         })
-    )
-
+    );
 }
+
+function deliverQueuedMessages(recipientSocket, recipientId) {
+    if (messageQueue.has(recipientId)) {
+        const queuedMessages = messageQueue.get(recipientId);
+        queuedMessages.forEach((msg) => {
+            recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }));
+        });
+        messageQueue.delete(recipientId);
+    }
+}
+
 
 function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
