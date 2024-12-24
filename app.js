@@ -24,8 +24,6 @@ const clients = new Map()
 
 wss.on("connection", (ws, _) => {
 
-    ws.on("pong", () => { });
-
     ws.on("message", message => {
 
         const parsedMessage = JSON.parse(message)
