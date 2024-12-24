@@ -310,7 +310,7 @@ async function handleAgentClosedSos(ws, message) {
     : fcms[0].token
 
     var dataGetProfileAgent = {
-        user_id: recipientId
+        user_id: userId
     }
 
     var agents = await User.getProfile(dataGetProfileAgent)
