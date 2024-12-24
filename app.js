@@ -387,7 +387,7 @@ async function handleAckRead(ws, message) {
 const messageQueue = new Map(); 
 
 async function handleMessage(ws, message) {
-    const { sender, recipient, text } = message;
+    const { chat_id, sender, recipient, text } = message;
     const msgId = uuidv4();
 
     const [userSenders, userRecipients] = await Promise.all([
@@ -403,17 +403,14 @@ async function handleMessage(ws, message) {
     const recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username;
     const recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar;
 
-    const chats = await Chat.checkConversation(sender, recipient);
-    const chatId = chats.length == 0 ? uuidv4() : chats[0].uid;
-
-    await Chat.insertMessage(msgId, chatId, sender, recipient, text);
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
 
     const fcms = await User.getFcm({ user_id: recipientId });
     const token = fcms.length == 0 ? "-" : fcms[0].token;
 
     const messageData = {
         id: msgId,
-        chat_id: chatId,
+        chat_id: chat_id,
         pair_room: recipient,
         user: {
             id: recipientId,
@@ -447,7 +444,7 @@ async function handleMessage(ws, message) {
             type: `fetch-message`,
             data: {
                 id: msgId,
-                chat_id: chatId,
+                chat_id: chat_id,
                 pair_room: sender,
                 user: {
                     id: senderId,
