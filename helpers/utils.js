@@ -1,5 +1,7 @@
 const moment = require('moment')
 
+const axios = require('axios')
+
 moment.updateLocale('id', {
     relativeTime : {
       future : "dalam %s",  // e.g., "dalam 5 menit" (in 5 minutes)
@@ -21,7 +23,6 @@ moment.updateLocale('id', {
   
 module.exports = {
 
-    
     countryCompareContinent(country) {
         var val = ""
         
@@ -85,4 +86,12 @@ module.exports = {
         .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/)
     },
 
+    sendFCM: async (title, body, token, type) => {
+        await axios.post('https://api-fcm.inovatiftujuh8.com/api/v1/firebase/fcm', {
+            token: token,
+            title: title,
+            body: body,
+            broadcast_type: type
+        })
+    },
 }

@@ -170,16 +170,36 @@ async function handleAgentConfirmSos(ws, message) {
 
     var userAgentId = user_agent_id
 
-    var dataGetProfile = {
+    var dataGetProfileAgent = {
         user_id: userAgentId
     }
 
     var chatId = uuidv4()
 
-    var agents = await User.getProfile(dataGetProfile)
+    var agents = await User.getProfile(dataGetProfileAgent)
 
     var agentId = agents.length == 0 ? "-" : agents[0].user_id
     var agentName = agents.length == 0 ? "-" : agents[0].username
+
+    var dataGetProfileSender = {
+        user_id: senderId
+    }
+
+    var users = await User.getProfile(dataGetProfileSender)
+
+    var senderName = users.length == 0 ? "-" : users[0].username
+
+    var dataFcm = {
+        user_id: senderId
+    }
+
+    var fcms = await User.getFcm(dataFcm)
+
+    var token = fcms.length == 0 
+    ? "-" 
+    : fcms[0].token
+
+    await utils.sendFCM(`${agentName} telah terhubung dengan Anda`, `Halo ${senderName}`, token, "agent-confirm-sos")
 
     var checkConversation = await Chat.checkConversation(senderId, userAgentId)
 
@@ -226,8 +246,7 @@ async function handleUserResolvedSos(ws, message) {
     var chats = await Chat.getChatBySosId(sos_id)
 
     var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var ticket = chats.length == 0 ? "-" : chats[0].ticket
-
+   
     var userId = sos.length == 0 ? "-" : sos[0].user_id
     var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
 
