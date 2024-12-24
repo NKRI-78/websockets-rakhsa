@@ -78,8 +78,6 @@ wss.on("connection", (ws, _) => {
 
     ws.onerror = function () {
         console.log("Some error occurred")
-        
-        handleDisconnect(ws)
     }
 })
 
@@ -464,12 +462,12 @@ async function handleMessage(ws, message) {
     if (recipientSocket) {
         await utils.sendFCM(senderName, text, token, "send-msg");
         recipientSocket.send(JSON.stringify({ type: "fetch-message", data: messageData }));
-    } else {
-        if (!messageQueue.has(recipient)) {
-            messageQueue.set(recipient, []);
-        }
-        messageQueue.get(recipient).push(messageData);
     }
+
+    if (!messageQueue.has(recipient)) {
+        messageQueue.set(recipient, []);
+    }
+    messageQueue.get(recipient).push(messageData);
 
     ws.send(
         JSON.stringify({
