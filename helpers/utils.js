@@ -1,4 +1,4 @@
-const moment = require('moment')
+const moment = require('moment-timezone')
 
 const axios = require('axios')
 
@@ -56,6 +56,10 @@ module.exports = {
 
     formatDateWithSubtractDays: (date, d) => {
         return moment(date).subtract(d, 'days').locale('id').format('yyyy/MM/DD')
+    },
+
+    formatDateWithSos: (date) => {
+        return moment(date).locale('id').format('yyyy-MM-DD')
     },
 
     formatDateWithSeconds: (date) => {

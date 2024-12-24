@@ -13,9 +13,6 @@ const Sos = require("./models/Sos")
 const User = require("./models/User")
 const utils = require("./helpers/utils")
 const Agent = require("./models/Agent")
-// const Kbri = require("./models/Kbri")
-
-const PING_INTERVAL = 5000
 
 const app = express()
 
@@ -25,12 +22,9 @@ const wss = new WebSocketServer.Server({ server })
 
 const clients = new Map()
 
-wss.on("connection", (ws, request) => {
-    ws.isAlive = true;
+wss.on("connection", (ws, _) => {
 
-    ws.on("pong", () => {
-        ws.isAlive = true;
-    });
+    ws.on("pong", () => { });
 
     ws.on("message", message => {
 
@@ -143,7 +137,8 @@ async function handleSos(message) {
                         media_type: sosType == 1 
                         ? "image" 
                         : "video",
-                        created_at: new Date(),
+                        created: utils.formatDateWithSos(new Date()),
+                        created_at: utils.formatDateWithSos(new Date()),
                         country: country,
                         location: location,
                         time: time,
@@ -506,18 +501,6 @@ async function handleMessage(ws, message) {
     )
 
 }
-
-setInterval(() => {
-    wss.clients.forEach((ws) => {
-        if (!ws.isAlive) {
-            console.log("Terminating a dead connection");
-            return ws.terminate(); 
-        }
-
-        ws.isAlive = false;
-        ws.ping(); 
-    });
-}, PING_INTERVAL);
 
 function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
