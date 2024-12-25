@@ -40,7 +40,7 @@ wss.on("connection", (ws, _) => {
                 handleLeave(ws, parsedMessage)
             break;
             case 'message': 
-                handleMessage(ws, parsedMessage) 
+                handleMessage(parsedMessage) 
             break;
             case 'sos':
                 handleSos(parsedMessage)
@@ -190,104 +190,150 @@ async function handleAgentConfirmSos(ws, message) {
 
 
 async function handleUserResolvedSos(ws, message) {
-    const { sos_id } = message
+    const { sos_id } = message;
 
-    const sos = await Sos.findById(sos_id)
+    const sos = await Sos.findById(sos_id);
+    const chats = await Chat.getChatBySosId(sos_id);
 
-    var chats = await Chat.getChatBySosId(sos_id)
+    const chatId = chats.length === 0 ? "-" : chats[0].uid;
+    const userId = sos.length === 0 ? "-" : sos[0].user_id;
 
-    var chatId = chats.length == 0 ? "-" : chats[0].uid
-    var userId = sos.length == 0 ? "-" : sos[0].user_id
-    var recipientId = sos.length == 0 ? "-" : sos[0].user_agent_id
+    await Sos.moveSosToResolved(sos_id);
+    await Sos.updateExpireMessages(chatId);
 
-    await Sos.moveSosToResolved(sos_id)
-    
-    await Sos.updateExpireMessages(chatId)
+    const dataFcm = { user_id: userId };
+    const fcms = await User.getFcm(dataFcm);
+    const token = fcms.length === 0 ? "-" : fcms[0].token;
 
-    var dataFcm = {
-        user_id: userId
+    await utils.sendFCM(
+        `Anda telah menyelesaikan kasus ini`,
+        `Terima kasih telah menggunakan layanan Raksha`,
+        token,
+        "agent-confirm-sos"
+    );
+
+    const resolvedMessage = {
+        type: `resolved-sos`,
+        chat_id: chatId,
+        sos_id: sos_id,
+        message: `Terima kasih telah menggunakan layanan Raksha`,
+    };
+
+    if (rooms.has(chatId)) {
+        rooms.get(chatId).forEach(conn => {
+            conn.send(JSON.stringify(resolvedMessage));
+        });
     }
 
-    var fcms = await User.getFcm(dataFcm)
-
-    var token = fcms.length == 0 
-    ? "-" 
-    : fcms[0].token
-
-    await utils.sendFCM(`Anda telah menyelesaikan kasus ini`, `Terima kasih telah menggunakan layanan Raksha`, token, "agent-confirm-sos")
-
-    const broadcastToRecipient = clients.get(recipientId)
-
-    if(broadcastToRecipient) {
-        broadcastToRecipient.send(JSON.stringify({
-            "type": `resolved-sos-${recipientId}`,
-            "chat_id": chatId,
-            "sos_id": sos_id,
-            "message": `Terima kasih telah menggunakan layanan Raksha`,
-        }))
-    }
-
-    ws.send(JSON.stringify({
-        "type": `resolved-sos-${userId}`,
-        "chat_id": chatId,
-        "sos_id": sos_id,
-        "message": `Terima kasih telah menggunakan layanan Raksha`,
-    }))
+    ws.send(JSON.stringify(resolvedMessage));
 }
 
 async function handleAgentClosedSos(ws, message) {
     const { sos_id, note } = message
 
     const sos = await Sos.findById(sos_id)
+    const chats = await Chat.getChatBySosId(sos_id)
 
-    var chats = await Chat.getChatBySosId(sos_id)
-
-    var chatId = chats.length == 0 ? "-" : chats[0].uid
-
-    var userId = sos.length == 0 ? "-" : sos[0].user_agent_id
-    var recipientId = sos.length == 0 ? "-" : sos[0].user_id
+    const chatId = chats.length === 0 ? "-" : chats[0].uid
+    const userId = sos.length === 0 ? "-" : sos[0].user_agent_id
+    const recipientId = sos.length === 0 ? "-" : sos[0].user_id
 
     await Sos.moveSosToClosed(sos_id)
-    
     await Sos.updateExpireMessages(chatId)
-    
-    var dataFcm = {
-        user_id: recipientId
-    }
 
-    var fcms = await User.getFcm(dataFcm)
+    const dataFcm = { user_id: recipientId }
+    const fcms = await User.getFcm(dataFcm)
+    const token = fcms.length === 0 ? "-" : fcms[0].token
 
-    var token = fcms.length == 0 
-    ? "-" 
-    : fcms[0].token
-
-    var dataGetProfileAgent = {
-        user_id: userId
-    }
-
-    var agents = await User.getProfile(dataGetProfileAgent)
-
-    var agentName = agents.length == 0 ? "-" : agents[0].username
+    const dataGetProfileAgent = { user_id: userId }
+    const agents = await User.getProfile(dataGetProfileAgent)
+    const agentName = agents.length === 0 ? "-" : agents[0].username
 
     await utils.sendFCM(`${agentName} telah menutup kasus ini`, note, token, "agent-closed-sos")
 
-    const broadcastToRecipient = clients.get(recipientId)
-    
-    if(broadcastToRecipient) {
-        broadcastToRecipient.send(JSON.stringify({
-            "type": `closed-sos-${recipientId}`,
-            "chat_id": chatId,
-            "sos_id": sos_id,
-            "message": note,
-        }))
+    const closedMessage = {
+        type: `closed-sos`,
+        chat_id: chatId,
+        sos_id: sos_id,
+        message: note,
     }
 
-    ws.send(JSON.stringify({
-        "type": `closed-sos-${userId}`,
-        "chat_id": chatId,
-        "sos_id": sos_id,
-        "message": note,
-    }))
+    if (rooms.has(chatId)) {
+        rooms.get(chatId).forEach(conn => {
+            conn.send(JSON.stringify(closedMessage));
+        })
+    }
+
+    ws.send(JSON.stringify(closedMessage))
+}
+
+async function handleMessage(message) {
+    const { chat_id, sender, recipient, text } = message
+    const msgId = uuidv4()
+
+    const [userSenders, userRecipients] = await Promise.all([
+        User.getProfile({ user_id: sender }),
+        User.getProfile({ user_id: recipient })
+    ])
+
+    const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id
+    const senderName = userSenders.length === 0 ? "-" : userSenders[0].username
+    const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar
+
+    const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id
+    const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username
+    const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar
+
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
+
+    const fcms = await User.getFcm({ user_id: recipientId })
+    const token = fcms.length === 0 ? "-" : fcms[0].token
+
+    const messageData = {
+        id: msgId,
+        chat_id: chat_id,
+        user: {
+            id: recipientId,
+            name: recipientName,
+            avatar: recipientAvatar,
+            is_me: false,
+        },
+        sender: {
+            id: senderId,
+        },
+        is_read: false,
+        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+        text: text,
+        type: "text"
+    }
+
+    if (rooms.has(chat_id)) {
+        rooms.get(chat_id).forEach(conn => {
+            const isRecipient = conn === clients.get(recipient)
+
+            conn.send(JSON.stringify({
+                type: "fetch-message",
+                data: {
+                    ...messageData,
+                    user: {
+                        id: isRecipient ? recipientId : senderId,
+                        name: isRecipient ? recipientName : senderName,
+                        avatar: isRecipient ? recipientAvatar : senderAvatar,
+                        is_me: !isRecipient,
+                    },
+                },
+            }))
+        })
+    }
+
+    const recipientSocket = clients.get(recipient)
+    if (!recipientSocket) {
+        await utils.sendFCM(senderName, text, token, "send-msg")
+        if (!messageQueue.has(recipient)) {
+            messageQueue.set(recipient, []);
+        }
+        messageQueue.get(recipient).push(messageData)
+    }
 }
 
 async function handleJoin(ws, message) {
@@ -347,84 +393,6 @@ function handleStopTyping(message) {
     if (recipientSocket) {
       recipientSocket.send(JSON.stringify({ type: 'typing', chat_id, sender, recipient, is_typing: false }))
     }
-}
-
-async function handleMessage(ws, message) {
-    const { chat_id, sender, recipient, text } = message;
-    const msgId = uuidv4();
-
-    const [userSenders, userRecipients] = await Promise.all([
-        User.getProfile({ user_id: sender }),
-        User.getProfile({ user_id: recipient })
-    ]);
-
-    const senderId = userSenders.length == 0 ? "-" : userSenders[0].user_id;
-    const senderName = userSenders.length == 0 ? "-" : userSenders[0].username;
-    const senderAvatar = userSenders.length == 0 ? "-" : userSenders[0].avatar;
-
-    const recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id;
-    const recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username;
-    const recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar;
-
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
-
-    const fcms = await User.getFcm({ user_id: recipientId });
-    const token = fcms.length == 0 ? "-" : fcms[0].token;
-
-    const messageData = {
-        id: msgId,
-        chat_id: chat_id,
-        pair_room: recipient,
-        user: {
-            id: recipientId,
-            name: recipientName,
-            avatar: recipientAvatar,
-            is_me: false,
-        },
-        sender: {
-            id: senderId,
-        },
-        is_read: false,
-        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-        text: text,
-        type: "text"
-    };
-
-    const recipientSocket = clients.get(recipient);
-
-    if (recipientSocket) {
-        await utils.sendFCM(senderName, text, token, "send-msg");
-        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: messageData }));
-    }
-
-    if (!messageQueue.has(recipient)) {
-        messageQueue.set(recipient, []);
-    }
-    messageQueue.get(recipient).push(messageData);
-
-    ws.send(
-        JSON.stringify({
-            type: `fetch-message`,
-            data: {
-                id: msgId,
-                chat_id: chat_id,
-                pair_room: sender,
-                user: {
-                    id: senderId,
-                    name: senderName,
-                    avatar: senderAvatar,
-                    is_me: true,
-                },
-                sender: {
-                    id: senderId,
-                },
-                is_read: true,
-                sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-                text: text,
-                type: "text"
-            }
-        })
-    );
 }
 
 function deliverQueuedMessages(recipientSocket, recipientId) {
