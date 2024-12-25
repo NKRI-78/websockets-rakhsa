@@ -54,13 +54,6 @@ wss.on("connection", (ws, _) => {
             case 'agent-closed-sos': 
                 handleAgentClosedSos(ws, parsedMessage)
             break;
-            case 'typing': 
-                handleTyping(parsedMessage)
-            break;
-            case 'stop-typing': 
-                handleStopTyping(parsedMessage)
-            break;
-            break
             default:
                 break;
         }
@@ -190,42 +183,43 @@ async function handleAgentConfirmSos(ws, message) {
 
 
 async function handleUserResolvedSos(ws, message) {
-    const { sos_id } = message;
+    const { sos_id } = message
 
-    const sos = await Sos.findById(sos_id);
-    const chats = await Chat.getChatBySosId(sos_id);
+    const sos = await Sos.findById(sos_id)
+    const chats = await Chat.getChatBySosId(sos_id)
 
-    const chatId = chats.length === 0 ? "-" : chats[0].uid;
-    const userId = sos.length === 0 ? "-" : sos[0].user_id;
+    const chatId = chats.length === 0 ? "-" : chats[0].uid
+    const userId = sos.length === 0 ? "-" : sos[0].user_id
 
-    await Sos.moveSosToResolved(sos_id);
-    await Sos.updateExpireMessages(chatId);
+    await Sos.moveSosToResolved(sos_id)
+    await Sos.updateExpireMessages(chatId)
 
-    const dataFcm = { user_id: userId };
-    const fcms = await User.getFcm(dataFcm);
-    const token = fcms.length === 0 ? "-" : fcms[0].token;
+    const dataFcm = { user_id: userId }
+    const fcms = await User.getFcm(dataFcm)
+    const token = fcms.length === 0 ? "-" : fcms[0].token
 
     await utils.sendFCM(
         `Anda telah menyelesaikan kasus ini`,
         `Terima kasih telah menggunakan layanan Raksha`,
         token,
         "agent-confirm-sos"
-    );
+    )
 
-    const resolvedMessage = {
-        type: `resolved-sos`,
-        chat_id: chatId,
-        sos_id: sos_id,
-        message: `Terima kasih telah menggunakan layanan Raksha`,
-    };
-
-    if (rooms.has(chatId)) {
-        rooms.get(chatId).forEach(conn => {
-            conn.send(JSON.stringify(resolvedMessage));
-        });
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set())
     }
 
-    ws.send(JSON.stringify(resolvedMessage));
+    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id
+    const recipient = sos.length === 0 ? "-" : sos[0].user_id
+
+    rooms.get(chatId).add(clients.get(sender))
+    rooms.get(chatId).add(clients.get(recipient))
+
+    rooms.get(chatId).forEach(conn => {
+        conn.send(JSON.stringify(resolvedMessage))
+    })
+
+    ws.send(JSON.stringify(resolvedMessage))
 }
 
 async function handleAgentClosedSos(ws, message) {
@@ -258,13 +252,21 @@ async function handleAgentClosedSos(ws, message) {
         message: note,
     }
 
-    if (rooms.has(chatId)) {
-        rooms.get(chatId).forEach(conn => {
-            conn.send(JSON.stringify(closedMessage));
-        })
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set());
     }
 
-    ws.send(JSON.stringify(closedMessage))
+    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
+    const recipient = sos.length === 0 ? "-" : sos[0].user_id;
+
+    rooms.get(chatId).add(clients.get(sender));
+    rooms.get(chatId).add(clients.get(recipient));
+
+    rooms.get(chatId).forEach(conn => {
+        conn.send(JSON.stringify(closedMessage));
+    });
+
+    ws.send(JSON.stringify(closedMessage));
 }
 
 async function handleMessage(message) {
@@ -385,23 +387,6 @@ async function handleLeave(_, message) {
     clients.delete(user_id)
 }
 
-function handleTyping(message) {
-    const { sender, recipient, chat_id } = message
-
-    const recipientSocket = clients.get(recipient)
-    if (recipientSocket) {
-      recipientSocket.send(JSON.stringify({ type: 'typing', chat_id, sender, recipient, is_typing: true }))
-    }
-}
-
-function handleStopTyping(message) {
-    const { sender, recipient, chat_id } = message
-  
-    const recipientSocket = clients.get(recipient)
-    if (recipientSocket) {
-      recipientSocket.send(JSON.stringify({ type: 'typing', chat_id, sender, recipient, is_typing: false }))
-    }
-}
 
 function deliverQueuedMessages(recipientSocket, recipientId) {
     if (messageQueue.has(recipientId)) {
