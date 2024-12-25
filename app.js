@@ -202,7 +202,7 @@ async function handleUserResolvedSos(ws, message) {
         `Anda telah menyelesaikan kasus ini`,
         `Terima kasih telah menggunakan layanan Raksha`,
         token,
-        "agent-confirm-sos"
+        "agent-resolved-sos"
     )
 
     if (!rooms.has(chatId)) {
