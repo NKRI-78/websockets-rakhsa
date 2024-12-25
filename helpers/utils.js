@@ -1,6 +1,10 @@
 const moment = require('moment-timezone')
 
+const crypto = require('crypto')
+
 const axios = require('axios')
+
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
 
 moment.updateLocale('id', {
     relativeTime : {
@@ -98,4 +102,17 @@ module.exports = {
             broadcast_type: type
         })
     },
+
+    generateNanoId(length = 21) {
+        const id = [];
+        const alphabetLength = alphabet.length
+
+        // Generate a random ID
+        for (let i = 0; i < length; i++) {
+            const randomValue = crypto.randomInt(0, alphabetLength)
+            id.push(alphabet[randomValue])
+        }
+
+        return id.join('')
+    }
 }

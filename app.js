@@ -3,6 +3,7 @@ require("dotenv").config()
 const { v4: uuidv4 } = require('uuid')
 
 const { createServer } = require('http')
+
 const WebSocketServer = require('ws')
 
 const express = require('express')
@@ -11,8 +12,9 @@ const moment = require('moment-timezone')
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
 const User = require("./models/User")
-const utils = require("./helpers/utils")
 const Agent = require("./models/Agent")
+
+const utils = require("./helpers/utils")
 
 const app = express()
 
@@ -21,6 +23,7 @@ const server = createServer(app)
 const wss = new WebSocketServer.Server({ server })
 
 const clients = new Map()
+const messageQueue = new Map(); 
 
 wss.on("connection", (ws, _) => {
 
@@ -56,11 +59,6 @@ wss.on("connection", (ws, _) => {
             case 'stop-typing': 
                 handleStopTyping(parsedMessage)
             break;
-            case 'ack-read': 
-                handleAckRead(ws, parsedMessage)
-            break;
-            case 'contact': 
-                handleContact(ws, parsedMessage)
             break
             default:
                 break;
@@ -172,9 +170,9 @@ async function handleAgentConfirmSos(ws, message) {
     ? "-" 
     : fcms[0].token
 
-    await utils.sendFCM(`${agentName} telah terhubung dengan Anda`, `Halo ${senderName}`, token, "agent-confirm-sos")
-
     await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
+
+    await Sos.approvalConfirm(sos_id, userAgentId)
  
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
@@ -189,7 +187,6 @@ async function handleAgentConfirmSos(ws, message) {
         }))
     }
 
-    await Sos.approvalConfirm(sos_id, userAgentId)
 
     ws.send(JSON.stringify({
         "type": `confirm-sos`,
@@ -201,6 +198,9 @@ async function handleAgentConfirmSos(ws, message) {
         "sender_id": senderId,
         "recipient_id": userAgentId,
     }))
+
+    
+    await utils.sendFCM(`${agentName} telah terhubung dengan Anda`, `Halo ${senderName}`, token, "agent-confirm-sos")
 }
 
 async function handleUserResolvedSos(ws, message) {
@@ -362,29 +362,6 @@ function handleStopTyping(message) {
       recipientSocket.send(JSON.stringify({ type: 'typing', chat_id, sender, recipient, is_typing: false }))
     }
 }
-
-async function handleAckRead(ws, message) {
-    const { chat_id, sender, recipient } = message
-
-    await Chat.updateAckRead(chat_id, recipient)
-
-    const recipientSocket = clients.get(sender)
-    if(recipientSocket) {
-        recipientSocket.send(JSON.stringify({ 
-            type: 'ack-read', 
-            chat_id,
-            recipient_view: false
-        }))
-    }
-
-    ws.send(JSON.stringify({
-        type: 'ack-read', 
-        chat_id,
-        recipient_view: true
-    }))
-}
-
-const messageQueue = new Map(); 
 
 async function handleMessage(ws, message) {
     const { chat_id, sender, recipient, text } = message;

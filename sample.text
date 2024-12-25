@@ -1,0 +1,219 @@
+require("dotenv").config();
+
+const { v4: uuidv4 } = require('uuid');
+const { createServer } = require('http');
+const WebSocketServer = require('ws');
+const express = require('express');
+const moment = require('moment-timezone');
+const Chat = require("./models/Chat");
+const Sos = require("./models/Sos");
+const User = require("./models/User");
+const utils = require("./helpers/utils");
+const Agent = require("./models/Agent");
+
+const app = express();
+const server = createServer(app);
+const wss = new WebSocketServer.Server({ server });
+
+const clients = new Map(); // Maps user_id to ws
+const rooms = new Map();   // Maps room_id to a set of user_ids
+
+wss.on("connection", (ws, _) => {
+    ws.on("message", message => {
+        const parsedMessage = JSON.parse(message);
+
+        switch (parsedMessage.type) {
+            case 'join':
+                handleJoin(ws, parsedMessage);
+                break;
+            case 'leave':
+                handleLeave(ws, parsedMessage);
+                break;
+            case 'message':
+                handleMessage(ws, parsedMessage);
+                break;
+            case 'sos':
+                handleSos(parsedMessage);
+                break;
+            case 'typing':
+                handleTyping(parsedMessage);
+                break;
+            case 'stop-typing':
+                handleStopTyping(parsedMessage);
+                break;
+            case 'ack-read':
+                handleAckRead(ws, parsedMessage);
+                break;
+            default:
+                break;
+        }
+    });
+
+    ws.on("close", () => {
+        handleDisconnect(ws);
+    });
+
+    ws.onerror = function () {
+        console.log("Some error occurred");
+    };
+});
+
+async function handleJoin(ws, message) {
+    const { user_id, room_id } = message;
+
+    console.log(`User ${user_id} joining room ${room_id}`);
+
+    // Handle disconnect of old connection if any
+    if (clients.has(user_id)) {
+        const oldWs = clients.get(user_id);
+        try {
+            oldWs.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }));
+            oldWs.terminate();
+        } catch (error) {
+            console.error("Error terminating old connection:", error);
+        }
+    }
+
+    clients.set(user_id, ws);
+
+    // Join the room
+    if (!rooms.has(room_id)) {
+        rooms.set(room_id, new Set());
+    }
+    rooms.get(room_id).add(user_id);
+
+    // Broadcast to all users in the room
+    for (const socket of clients.values()) {
+        socket.send(JSON.stringify({ type: "user_online", user_id: user_id }));
+    }
+
+    deliverQueuedMessages(ws, user_id, room_id);
+}
+
+async function handleLeave(ws, message) {
+    const { user_id, room_id } = message;
+
+    console.log(`User ${user_id} leaving room ${room_id}`);
+
+    // Remove from room
+    if (rooms.has(room_id)) {
+        rooms.get(room_id).delete(user_id);
+    }
+
+    // Broadcast to all users in the room
+    for (const socket of clients.values()) {
+        socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }));
+    }
+
+    clients.delete(user_id);
+}
+
+async function handleMessage(ws, message) {
+    const { chat_id, sender, recipient, text, room_id } = message;
+    const msgId = uuidv4();
+
+    const [userSenders, userRecipients] = await Promise.all([
+        User.getProfile({ user_id: sender }),
+        User.getProfile({ user_id: recipient })
+    ]);
+
+    const senderId = userSenders.length == 0 ? "-" : userSenders[0].user_id;
+    const senderName = userSenders.length == 0 ? "-" : userSenders[0].username;
+    const senderAvatar = userSenders.length == 0 ? "-" : userSenders[0].avatar;
+
+    const recipientId = userRecipients.length == 0 ? "-" : userRecipients[0].user_id;
+    const recipientName = userRecipients.length == 0 ? "-" : userRecipients[0].username;
+    const recipientAvatar = userRecipients.length == 0 ? "-" : userRecipients[0].avatar;
+
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
+
+    // Send message to the recipient if they're connected
+    const recipientSocket = clients.get(recipient);
+    if (recipientSocket) {
+        recipientSocket.send(JSON.stringify({ 
+            type: "fetch-message", 
+            data: { 
+                id: msgId,
+                chat_id,
+                sender: { id: senderId, name: senderName, avatar: senderAvatar },
+                recipient: { id: recipientId, name: recipientName, avatar: recipientAvatar },
+                text,
+                sent_time: moment().tz("Asia/Jakarta").format('HH:mm')
+            }
+        }));
+    }
+
+    // Broadcast the message to all users in the room
+    if (rooms.has(room_id)) {
+        for (const userId of rooms.get(room_id)) {
+            if (userId !== sender) {
+                const userSocket = clients.get(userId);
+                if (userSocket) {
+                    userSocket.send(JSON.stringify({ 
+                        type: "room-message", 
+                        data: { 
+                            id: msgId,
+                            chat_id,
+                            sender: { id: senderId, name: senderName, avatar: senderAvatar },
+                            text,
+                            sent_time: moment().tz("Asia/Jakarta").format('HH:mm')
+                        }
+                    }));
+                }
+            }
+        }
+    }
+}
+
+// Deliver queued messages to the user
+function deliverQueuedMessages(ws, user_id, room_id) {
+    if (messageQueue.has(user_id)) {
+        const queuedMessages = messageQueue.get(user_id);
+        queuedMessages.forEach((msg) => {
+            ws.send(JSON.stringify({ 
+                type: "fetch-message",
+                data: msg 
+            }));
+        });
+    }
+}
+
+// Handle other events like typing, ack-read, and sos here...
+
+function handleTyping(message) {
+    const { sender, recipient, room_id } = message;
+    // Broadcast to all users in the room
+    if (rooms.has(room_id)) {
+        for (const userId of rooms.get(room_id)) {
+            const userSocket = clients.get(userId);
+            if (userSocket) {
+                userSocket.send(JSON.stringify({ 
+                    type: 'typing', 
+                    sender,
+                    recipient,
+                    is_typing: true 
+                }));
+            }
+        }
+    }
+}
+
+function handleStopTyping(message) {
+    const { sender, recipient, room_id } = message;
+    // Broadcast to all users in the room
+    if (rooms.has(room_id)) {
+        for (const userId of rooms.get(room_id)) {
+            const userSocket = clients.get(userId);
+            if (userSocket) {
+                userSocket.send(JSON.stringify({ 
+                    type: 'typing', 
+                    sender,
+                    recipient,
+                    is_typing: false 
+                }));
+            }
+        }
+    }
+}
+
+// Handle other functionalities like ack-read, sos, etc...
