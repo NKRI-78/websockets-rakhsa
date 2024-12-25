@@ -284,7 +284,7 @@ async function handleMessage(message) {
     const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username
     const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar
 
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text)
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
 
     const fcms = await User.getFcm({ user_id: recipientId })
     const token = fcms.length === 0 ? "-" : fcms[0].token
@@ -292,6 +292,7 @@ async function handleMessage(message) {
     const messageData = {
         id: msgId,
         chat_id: chat_id,
+        pair_room: recipient,
         user: {
             id: recipientId,
             name: recipientName,
@@ -307,28 +308,35 @@ async function handleMessage(message) {
         type: "text"
     }
 
-    if (rooms.has(chat_id)) {
-        rooms.get(chat_id).forEach(conn => {
-            const isRecipient = conn === clients.get(recipient)
-
-            conn.send(JSON.stringify({
-                type: "fetch-message",
-                data: {
-                    ...messageData,
-                    user: {
-                        id: isRecipient ? recipientId : senderId,
-                        name: isRecipient ? recipientName : senderName,
-                        avatar: isRecipient ? recipientAvatar : senderAvatar,
-                        is_me: !isRecipient,
-                    },
-                },
-            }))
-        })
+    if (!rooms.has(chat_id)) {
+        rooms.set(chat_id, new Set())
     }
 
+    rooms.get(chat_id).add(clients.get(sender))
+    rooms.get(chat_id).add(clients.get(recipient))
+
+    rooms.get(chat_id).forEach(conn => {
+        const isRecipient = conn === clients.get(recipient)
+
+        conn.send(JSON.stringify({
+            type: "fetch-message",
+            data: {
+                ...messageData,
+                user: {
+                    id: isRecipient ? recipientId : senderId,
+                    name: isRecipient ? recipientName : senderName,
+                    avatar: isRecipient ? recipientAvatar : senderAvatar,
+                    is_me: !isRecipient,
+                },
+            },
+        }))
+    });
+
     const recipientSocket = clients.get(recipient)
+
     if (!recipientSocket) {
         await utils.sendFCM(senderName, text, token, "send-msg")
+
         if (!messageQueue.has(recipient)) {
             messageQueue.set(recipient, []);
         }
