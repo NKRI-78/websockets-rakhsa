@@ -341,16 +341,12 @@ async function handleMessage(message) {
         }))
     });
 
-    const recipientSocket = clients.get(recipient)
+    await utils.sendFCM(senderName, text, token, "send-msg")
 
-    if (!recipientSocket) {
-        await utils.sendFCM(senderName, text, token, "send-msg")
-
-        if (!messageQueue.has(recipient)) {
-            messageQueue.set(recipient, []);
-        }
-        messageQueue.get(recipient).push(messageData)
+    if (!messageQueue.has(recipient)) {
+        messageQueue.set(recipient, []);
     }
+    messageQueue.get(recipient).push(messageData)
 }
 
 async function handleJoin(ws, message) {
