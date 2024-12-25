@@ -206,10 +206,10 @@ async function handleUserResolvedSos(ws, message) {
     )
 
     const resolvedMessage = {
-        type: `resolved-sos`,
+        type: "resolved-sos",
         chat_id: chatId,
         sos_id: sos_id,
-        message: note,
+        message: `Terima kasih telah menggunakan layanan Raksha`,
     }
 
     if (!rooms.has(chatId)) {
