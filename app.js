@@ -23,7 +23,8 @@ const server = createServer(app)
 const wss = new WebSocketServer.Server({ server })
 
 const clients = new Map()
-const messageQueue = new Map(); 
+const messageQueue = new Map()
+const rooms = new Map();
 
 wss.on("connection", (ws, _) => {
 
@@ -129,79 +130,64 @@ async function handleSos(message) {
 }
 
 
-async function handleAgentConfirmSos(ws, message) { 
-    const { sos_id, user_agent_id } = message
+async function handleAgentConfirmSos(ws, message) {
+    const { sos_id, user_agent_id } = message;
 
-    var chatId = uuidv4()
+    const chatId = uuidv4();
 
-    const sos = await Sos.findById(sos_id)
+    const sos = await Sos.findById(sos_id);
+    const status = sos.length === 0 ? '-' : sos[0].status
+    const senderId = sos.length === 0 ? '-' : sos[0].user_id
 
-    var status = sos.length == 0 ? '-' : sos[0].status
-    var senderId = sos.length == 0 ? '-' : sos[0].user_id
+    const broadcastToSender = clients.get(senderId);
 
-    const broadcastToSender = clients.get(senderId)
+    const dataGetProfileAgent = { user_id: user_agent_id }
+    const agents = await User.getProfile(dataGetProfileAgent)
+    const agentId = agents.length === 0 ? "-" : agents[0].user_id
+    const agentName = agents.length === 0 ? "-" : agents[0].username
 
-    var userAgentId = user_agent_id
+    const dataGetProfileSender = { user_id: senderId }
+    const users = await User.getProfile(dataGetProfileSender)
+    const senderName = users.length === 0 ? "-" : users[0].username
 
-    var dataGetProfileAgent = {
-        user_id: userAgentId
+    const dataFcm = { user_id: senderId }
+    const fcms = await User.getFcm(dataFcm)
+    const token = fcms.length === 0 ? "-" : fcms[0].token
+
+    await Chat.insertChat(chatId, senderId, user_agent_id, sos_id)
+    await Sos.approvalConfirm(sos_id, user_agent_id);
+
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set())
+    }
+    rooms.get(chatId).add(ws)
+    if (broadcastToSender) {
+        rooms.get(chatId).add(broadcastToSender)
     }
 
-    var agents = await User.getProfile(dataGetProfileAgent)
+    const confirmationMessage = {
+        type: `confirm-sos`,
+        sos_id: sos_id,
+        chat_id: chatId,
+        status: status,
+        agent_id: agentId,
+        agent_name: agentName,
+        sender_id: senderId,
+        recipient_id: user_agent_id,
+    };
 
-    var agentId = agents.length == 0 ? "-" : agents[0].user_id
-    var agentName = agents.length == 0 ? "-" : agents[0].username
+    rooms.get(chatId).forEach(conn => {
+        conn.send(JSON.stringify(confirmationMessage));
+    });
 
-    var dataGetProfileSender = {
-        user_id: senderId
-    }
-
-    var users = await User.getProfile(dataGetProfileSender)
-
-    var senderName = users.length == 0 ? "-" : users[0].username
-
-    var dataFcm = {
-        user_id: senderId
-    }
-
-    var fcms = await User.getFcm(dataFcm)
-
-    var token = fcms.length == 0 
-    ? "-" 
-    : fcms[0].token
-
-    await Chat.insertChat(chatId, senderId, userAgentId, sos_id)
-
-    await Sos.approvalConfirm(sos_id, userAgentId)
- 
-    if(broadcastToSender) {
-        broadcastToSender.send(JSON.stringify({
-            "type": `confirm-sos-${senderId}`,
-            "sos_id": sos_id,
-            "chat_id": chatId,
-            "status": status,
-            "agent_id": agentId,
-            "agent_name": agentName,
-            "sender_id": senderId,
-            "recipient_id": userAgentId,
-        }))
-    }
-
-
-    ws.send(JSON.stringify({
-        "type": `confirm-sos-${userAgentId}`,
-        "sos_id": sos_id,
-        "status": status,
-        "chat_id": chatId,
-        "agent_id": agentId,
-        "agent_name": agentName,
-        "sender_id": senderId,
-        "recipient_id": userAgentId,
-    }))
-
-    
-    await utils.sendFCM(`${agentName} telah terhubung dengan Anda`, `Halo ${senderName}`, token, "agent-confirm-sos")
+    await utils.sendFCM(
+        `${agentName} telah terhubung dengan Anda`,
+        `Halo ${senderName}`,
+        token,
+        "agent-confirm-sos"
+    );
 }
+
 
 async function handleUserResolvedSos(ws, message) {
     const { sos_id } = message
