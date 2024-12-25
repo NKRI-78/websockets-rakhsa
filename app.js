@@ -205,6 +205,13 @@ async function handleUserResolvedSos(ws, message) {
         "agent-resolved-sos"
     )
 
+    const resolvedMessage = {
+        type: `resolved-sos`,
+        chat_id: chatId,
+        sos_id: sos_id,
+        message: note,
+    }
+
     if (!rooms.has(chatId)) {
         rooms.set(chatId, new Set())
     }
