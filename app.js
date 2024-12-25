@@ -176,7 +176,7 @@ async function handleAgentConfirmSos(ws, message) {
  
     if(broadcastToSender) {
         broadcastToSender.send(JSON.stringify({
-            "type": `confirm-sos`,
+            "type": `confirm-sos-${senderId}`,
             "sos_id": sos_id,
             "chat_id": chatId,
             "status": status,
@@ -189,7 +189,7 @@ async function handleAgentConfirmSos(ws, message) {
 
 
     ws.send(JSON.stringify({
-        "type": `confirm-sos`,
+        "type": `confirm-sos-${userAgentId}`,
         "sos_id": sos_id,
         "status": status,
         "chat_id": chatId,
