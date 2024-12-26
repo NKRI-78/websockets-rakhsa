@@ -400,11 +400,7 @@ function deliverQueuedMessages(recipientSocket, recipientId) {
 
             queuedMessages.forEach((msg) => {
                 try {
-                    if (recipientSocket.readyState === WebSocket.OPEN) {
-                        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
-                    } else {
-                        console.warn(`Socket for recipient ${recipientId} is not open.`)
-                    }
+                    recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
                 } catch (error) {
                     console.error(`Error delivering message to ${recipientId}:`, error)
                 }
