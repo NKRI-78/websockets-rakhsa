@@ -108,9 +108,10 @@ async function handleSos(message) {
         const senderName = sender.length === 0 ? "-" : sender[0].username
         const senderId = user_id;
 
-        for (const [userId, client] of clients) {
-            if (client.readyState === WebSocketServer.OPEN) {
-                const relevantAgent = agents.find(agent => agent.user_id === userId)
+        for (const [sessionId, client] of clients) {
+            const userSessions = sessions.get(user_id)
+            if (userSessions && userSessions.includes(sessionId) && client.readyState === WebSocket.OPEN) {
+                const relevantAgent = agents.find(agent => agent.user_id === user_id)
                 if (relevantAgent) {
                     const payload = {
                         type: "sos",
@@ -130,6 +131,7 @@ async function handleSos(message) {
                         lng,
                         platform_type
                     }
+
                     client.send(JSON.stringify(payload))
                 }
             }
@@ -389,7 +391,10 @@ async function handleJoin(ws, message) {
         socket.send(JSON.stringify({ type: "user_online", user_id: user_id, session_id: sessionId }));
     }
 
-    removeSession(sessionId, user_id)
+    ws.on('close', () => {
+        console.log(`Connection for session ${sessionId} closed`);
+        removeSession(sessionId, user_id);
+    });
 }
 
 async function handleLeave(_, message) {
