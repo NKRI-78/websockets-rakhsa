@@ -28,6 +28,12 @@ const rooms = new Map();
 
 wss.on("connection", (ws, _) => {
 
+    const pingInterval = setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+            ws.ping(); 
+        }
+    }, 30000);
+
     ws.on("message", message => {
 
         const parsedMessage = JSON.parse(message)
@@ -61,13 +67,17 @@ wss.on("connection", (ws, _) => {
  
     ws.on("close", () => {
         console.log("Server disconnect")
-        
+        clearInterval(pingInterval)
         handleDisconnect(ws)
     })
 
     ws.onerror = function () {
         console.log("Some error occurred")
     }
+
+    ws.on("pong", () => {
+        console.log("Pong received from client")
+    });
 })
 
 async function handleJoin(ws, message) {
