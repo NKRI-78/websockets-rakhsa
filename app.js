@@ -398,7 +398,7 @@ function deliverQueuedMessages(recipientSocket, recipientId) {
             queuedMessages.forEach((msg) => {
                 recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
             })
-        }, 1000)
+        }, 2000)
         messageQueue.delete(recipientId)
     }
 }
