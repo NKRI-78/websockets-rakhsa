@@ -391,21 +391,34 @@ async function handleMessage(message) {
     await utils.sendFCM(senderName, text, token, "send-msg")
 }
 
-function deliverQueuedMessages(recipientSocket, recipientId) {
+async function deliverQueuedMessages(recipientSocket, recipientId) {
     if (messageQueue.has(recipientId)) {
         const queuedMessages = messageQueue.get(recipientId)
 
         if (queuedMessages.length > 0) {
             console.log(`Delivering ${queuedMessages.length} messages to recipient ${recipientId}`)
 
-            queuedMessages.forEach((msg) => {
+            for (let i = 0; i < queuedMessages.length; i++) {
+                const msg = queuedMessages[i]
+
                 try {
-                    recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
+                    await new Promise((resolve, reject) => {
+                        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }), (error) => {
+                            if (error) {
+                                reject(error)
+                            } else {
+                                resolve()
+                            }
+                        });
+                    });
+
+                    console.log(`Message delivered to ${recipientId}:`, msg)
                 } catch (error) {
                     console.error(`Error delivering message to ${recipientId}:`, error)
                 }
-            });
+            }
 
+            console.log(`All messages delivered to ${recipientId}, clearing the queue.`)
             messageQueue.delete(recipientId)
         } else {
             console.log(`No queued messages for recipient ${recipientId}`)
@@ -414,6 +427,7 @@ function deliverQueuedMessages(recipientSocket, recipientId) {
         console.log(`No messages in queue for recipient ${recipientId}`)
     }
 }
+
 
 
 function handleDisconnect(ws) {
