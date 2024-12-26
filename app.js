@@ -61,8 +61,6 @@ wss.on("connection", (ws, _) => {
  
     ws.on("close", () => {
         console.log("Server disconnect")
-        
-        handleDisconnect(ws)
     })
 
     ws.onerror = function () {
@@ -70,326 +68,708 @@ wss.on("connection", (ws, _) => {
     }
 })
 
+async function handleJoin(ws, message) {
+    const { user_id } = message
+
+    console.log(`user_id ${user_id} join`)
+
+    const session_id = utils.generateNanoId()
+
+    const userConnections = clients.get(user_id) || []
+
+    userConnections.push({ ws, session_id })
+    clients.set(user_id, userConnections);
+
+    console.log(`Connection established for user_id ${user_id} with session_id ${session_id}`)
+
+    deliverQueuedMessages(ws, user_id)
+
+    for (const connections of clients.values()) {
+        connections.forEach(({ ws: socket }) => {
+            socket.send(JSON.stringify({ type: "user_online", user_id, session_id }))
+        })
+    }
+
+    ws.on('close', () => {
+        console.log(`Connection closed for user_id ${user_id} with session_id ${session_id}`);
+
+        const updatedConnections = (clients.get(user_id) || []).filter(
+            (connection) => connection.session_id !== session_id
+        );
+
+        if (updatedConnections.length > 0) {
+            clients.set(user_id, updatedConnections);
+        } else {
+            clients.delete(user_id);
+        }
+
+        for (const connections of clients.values()) {
+            connections.forEach(({ ws: socket }) => {
+                socket.send(JSON.stringify({ type: "user_offline", user_id, session_id }));
+            });
+        }
+    });
+}
+
+async function handleLeave(_, message) {
+    const { user_id, session_id } = message;
+
+    console.log(`user_id ${user_id} with session_id ${session_id} leave`);
+
+    if (!clients.has(user_id)) {
+        console.warn(`No active connections found for user_id ${user_id}`);
+        return;
+    }
+
+    const userConnections = clients.get(user_id).filter(
+        (connection) => connection.session_id !== session_id
+    );
+
+    if (userConnections.length > 0) {
+        clients.set(user_id, userConnections);
+    } else {
+        clients.delete(user_id);
+    }
+
+    for (const connections of clients.values()) {
+        connections.forEach(({ ws }) => {
+            ws.send(JSON.stringify({ type: "user_offline", user_id, session_id }));
+        });
+    }
+
+    console.log(`Session ${session_id} for user_id ${user_id} removed.`);
+}
+
 async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
 
     try {
-        const continent = utils.countryCompareContinent("Japan");
-        
+        const continent = utils.countryCompareContinent(country);
+
         const agents = await Agent.userAgent(continent);
 
-        const sosType = ext === "jpg" ? 1 : 2;
-
-        const platformType = platform_type === "raksha" ? 1 : 2
+        const sosType = ext === "jpg" ? 1 : 2; 
+        const platformType = platform_type === "raksha" ? 1 : 2;
 
         await Sos.broadcast(
             sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType
         );
 
-        const dataGetProfile = { user_id }
-        const sender = await User.getProfile(dataGetProfile)
-        const senderName = sender.length === 0 ? "-" : sender[0].username
+        const dataGetProfile = { user_id };
+        const sender = await User.getProfile(dataGetProfile);
+        const senderName = sender.length === 0 ? "-" : sender[0].username;
         const senderId = user_id;
 
-        for (const [userId, client] of clients) {
-            if (client.readyState === WebSocketServer.OPEN) {
-                const relevantAgent = agents.find(agent => agent.user_id === userId)
-                if (relevantAgent) {
-                    const payload = {
-                        type: "sos",
-                        id: sos_id,
-                        sender: {
-                            id: senderId,
-                            name: senderName
-                        },
-                        media,
-                        media_type: sosType === 1 ? "image" : "video",
-                        created: utils.formatDateWithSos(new Date()),
-                        created_at: utils.formatDateWithSos(new Date()),
-                        country,
-                        location,
-                        time,
-                        lat,
-                        lng,
-                        platform_type
+        const sosPayload = {
+            type: "sos",
+            id: sos_id,
+            sender: {
+                id: senderId,
+                name: senderName
+            },
+            media,
+            media_type: sosType === 1 ? "image" : "video",
+            created: utils.formatDateWithSos(new Date()),
+            created_at: utils.formatDateWithSos(new Date()),
+            country,
+            location,
+            time,
+            lat,
+            lng,
+            platform_type
+        };
+
+        for (const [userId, connections] of clients) {
+            for (const { ws } of connections) {
+                if (ws.readyState === WebSocket.OPEN) {
+                    const relevantAgent = agents.find(agent => agent.user_id === userId);
+                    if (relevantAgent) {
+                        ws.send(JSON.stringify(sosPayload));
                     }
-                    client.send(JSON.stringify(payload))
                 }
             }
         }
+
+        console.log(`SOS ${sos_id} broadcasted successfully.`);
     } catch (error) {
-        console.error('Error handling SOS:', error)
+        console.error("Error handling SOS:", error);
     }
 }
-
 
 async function handleAgentConfirmSos(ws, message) {
     const { sos_id, user_agent_id } = message;
 
-    const chatId = uuidv4();
+    try {
+        const chatId = uuidv4();
 
-    const sos = await Sos.findById(sos_id);
-    const status = sos.length === 0 ? '-' : sos[0].status
-    const senderId = sos.length === 0 ? '-' : sos[0].user_id
+        const sos = await Sos.findById(sos_id);
+        const status = sos.length === 0 ? '-' : sos[0].status;
+        const senderId = sos.length === 0 ? '-' : sos[0].user_id;
 
-    const broadcastToSender = clients.get(senderId);
+        const senderConnections = clients.get(senderId);
 
-    const dataGetProfileAgent = { user_id: user_agent_id }
-    const agents = await User.getProfile(dataGetProfileAgent)
-    const agentId = agents.length === 0 ? "-" : agents[0].user_id
-    const agentName = agents.length === 0 ? "-" : agents[0].username
+        const dataGetProfileAgent = { user_id: user_agent_id };
+        const agents = await User.getProfile(dataGetProfileAgent);
+        const agentId = agents.length === 0 ? "-" : agents[0].user_id;
+        const agentName = agents.length === 0 ? "-" : agents[0].username;
 
-    const dataGetProfileSender = { user_id: senderId }
-    const users = await User.getProfile(dataGetProfileSender)
-    const senderName = users.length === 0 ? "-" : users[0].username
+        const dataGetProfileSender = { user_id: senderId };
+        const users = await User.getProfile(dataGetProfileSender);
+        const senderName = users.length === 0 ? "-" : users[0].username;
 
-    const dataFcm = { user_id: senderId }
-    const fcms = await User.getFcm(dataFcm)
-    const token = fcms.length === 0 ? "-" : fcms[0].token
+        const dataFcm = { user_id: senderId };
+        const fcms = await User.getFcm(dataFcm);
+        const token = fcms.length === 0 ? "-" : fcms[0].token;
 
-    await Chat.insertChat(chatId, senderId, user_agent_id, sos_id)
-    await Sos.approvalConfirm(sos_id, user_agent_id);
+        await Chat.insertChat(chatId, senderId, user_agent_id, sos_id)
+        await Sos.approvalConfirm(sos_id, user_agent_id)
 
-    if (!rooms.has(chatId)) {
-        rooms.set(chatId, new Set())
+        if (!rooms.has(chatId)) {
+            rooms.set(chatId, new Set())
+        }
+
+        rooms.get(chatId).add(ws); 
+        if (senderConnections) {
+            senderConnections.forEach(({ ws }) => {
+                rooms.get(chatId).add(ws);
+            })
+        }
+
+        const confirmationMessage = {
+            type: "confirm-sos",
+            sos_id: sos_id,
+            chat_id: chatId,
+            status: status,
+            agent_id: agentId,
+            agent_name: agentName,
+            sender_id: senderId,
+            recipient_id: user_agent_id,
+        }
+
+        rooms.get(chatId).forEach((conn) => {
+            if (conn.readyState === WebSocket.OPEN) {
+                conn.send(JSON.stringify(confirmationMessage))
+            }
+        })
+
+        await utils.sendFCM(
+            `${agentName} telah terhubung dengan Anda`,
+            `Halo ${senderName}`,
+            token,
+            "agent-confirm-sos"
+        )
+
+        console.log(`SOS ${sos_id} confirmed by agent ${user_agent_id}. Chat room ${chatId} created.`)
+    } catch (error) {
+        console.error("Error handling agent confirmation of SOS:", error)
     }
-    rooms.get(chatId).add(ws)
-    if (broadcastToSender) {
-        rooms.get(chatId).add(broadcastToSender)
-    }
-
-    const confirmationMessage = {
-        type: `confirm-sos`,
-        sos_id: sos_id,
-        chat_id: chatId,
-        status: status,
-        agent_id: agentId,
-        agent_name: agentName,
-        sender_id: senderId,
-        recipient_id: user_agent_id,
-    };
-
-    rooms.get(chatId).forEach(conn => {
-        conn.send(JSON.stringify(confirmationMessage));
-    });
-
-    await utils.sendFCM(
-        `${agentName} telah terhubung dengan Anda`,
-        `Halo ${senderName}`,
-        token,
-        "agent-confirm-sos"
-    );
 }
-
 
 async function handleUserResolvedSos(ws, message) {
     const { sos_id } = message
 
-    const sos = await Sos.findById(sos_id)
-    const chats = await Chat.getChatBySosId(sos_id)
+    try {
+        const sos = await Sos.findById(sos_id)
+        const chats = await Chat.getChatBySosId(sos_id)
 
-    const chatId = chats.length === 0 ? "-" : chats[0].uid
-    const userId = sos.length === 0 ? "-" : sos[0].user_id
+        const chatId = chats.length === 0 ? "-" : chats[0].uid
+        const userId = sos.length === 0 ? "-" : sos[0].user_id
 
-    await Sos.moveSosToResolved(sos_id)
-    await Sos.updateExpireMessages(chatId)
+        await Sos.moveSosToResolved(sos_id)
+        await Sos.updateExpireMessages(chatId)
 
-    const dataFcm = { user_id: userId }
-    const fcms = await User.getFcm(dataFcm)
-    const token = fcms.length === 0 ? "-" : fcms[0].token
+        const dataFcm = { user_id: userId }
+        const fcms = await User.getFcm(dataFcm)
+        const token = fcms.length === 0 ? "-" : fcms[0].token
 
-    await utils.sendFCM(
-        `Anda telah menyelesaikan kasus ini`,
-        `Terima kasih telah menggunakan layanan Raksha`,
-        token,
-        "agent-resolved-sos"
-    )
+        await utils.sendFCM(
+            `Anda telah menyelesaikan kasus ini`,
+            `Terima kasih telah menggunakan layanan Raksha`,
+            token,
+            "agent-resolved-sos"
+        );
 
-    const resolvedMessage = {
-        type: "resolved-sos",
-        chat_id: chatId,
-        sos_id: sos_id,
-        message: `Terima kasih telah menggunakan layanan Raksha`,
+        const resolvedMessage = {
+            type: "resolved-sos",
+            chat_id: chatId,
+            sos_id: sos_id,
+            message: `Terima kasih telah menggunakan layanan Raksha`,
+        };
+
+        if (!rooms.has(chatId)) {
+            rooms.set(chatId, new Set())
+        }
+
+        const sender = sos.length === 0 ? "-" : sos[0].user_agent_id
+        const recipient = sos.length === 0 ? "-" : sos[0].user_id
+
+        const senderConnections = clients.get(sender)
+        const recipientConnections = clients.get(recipient)
+
+        if (senderConnections) {
+            senderConnections.forEach(({ ws }) => {
+                rooms.get(chatId).add(ws)
+            })
+        }
+
+        if (recipientConnections) {
+            recipientConnections.forEach(({ ws }) => {
+                rooms.get(chatId).add(ws);
+            })
+        }
+
+        rooms.get(chatId).forEach((conn) => {
+            if (conn.readyState === WebSocket.OPEN) {
+                conn.send(JSON.stringify(resolvedMessage))
+            }
+        })
+
+        ws.send(JSON.stringify(resolvedMessage))
+
+        console.log(`SOS ${sos_id} marked as resolved. Chat room ${chatId} updated.`)
+    } catch (error) {
+        console.error("Error handling resolved SOS:", error)
     }
-
-    if (!rooms.has(chatId)) {
-        rooms.set(chatId, new Set())
-    }
-
-    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id
-    const recipient = sos.length === 0 ? "-" : sos[0].user_id
-
-    rooms.get(chatId).add(clients.get(sender))
-    rooms.get(chatId).add(clients.get(recipient))
-
-    rooms.get(chatId).forEach(conn => {
-        conn.send(JSON.stringify(resolvedMessage))
-    })
-
-    ws.send(JSON.stringify(resolvedMessage))
 }
 
 async function handleAgentClosedSos(ws, message) {
-    const { sos_id, note } = message
+    const { sos_id, note } = message;
 
-    const sos = await Sos.findById(sos_id)
-    const chats = await Chat.getChatBySosId(sos_id)
+    try {
+        const sos = await Sos.findById(sos_id);
+        const chats = await Chat.getChatBySosId(sos_id);
 
-    const chatId = chats.length === 0 ? "-" : chats[0].uid
-    const userId = sos.length === 0 ? "-" : sos[0].user_agent_id
-    const recipientId = sos.length === 0 ? "-" : sos[0].user_id
+        const chatId = chats.length === 0 ? "-" : chats[0].uid;
+        const userId = sos.length === 0 ? "-" : sos[0].user_agent_id;
+        const recipientId = sos.length === 0 ? "-" : sos[0].user_id;
 
-    await Sos.moveSosToClosed(sos_id)
-    await Sos.updateExpireMessages(chatId)
+        await Sos.moveSosToClosed(sos_id);
+        await Sos.updateExpireMessages(chatId);
 
-    const dataFcm = { user_id: recipientId }
-    const fcms = await User.getFcm(dataFcm)
-    const token = fcms.length === 0 ? "-" : fcms[0].token
+        const dataFcm = { user_id: recipientId };
+        const fcms = await User.getFcm(dataFcm);
+        const token = fcms.length === 0 ? "-" : fcms[0].token;
 
-    const dataGetProfileAgent = { user_id: userId }
-    const agents = await User.getProfile(dataGetProfileAgent)
-    const agentName = agents.length === 0 ? "-" : agents[0].username
+        const dataGetProfileAgent = { user_id: userId };
+        const agents = await User.getProfile(dataGetProfileAgent);
+        const agentName = agents.length === 0 ? "-" : agents[0].username;
 
-    await utils.sendFCM(`${agentName} telah menutup kasus ini`, note, token, "agent-closed-sos")
+        await utils.sendFCM(
+            `${agentName} telah menutup kasus ini`,
+            note,
+            token,
+            "agent-closed-sos"
+        );
 
-    const closedMessage = {
-        type: `closed-sos`,
-        chat_id: chatId,
-        sos_id: sos_id,
-        message: note,
+        const closedMessage = {
+            type: "closed-sos",
+            chat_id: chatId,
+            sos_id: sos_id,
+            message: note,
+        };
+
+        if (!rooms.has(chatId)) {
+            rooms.set(chatId, new Set());
+        }
+
+        const senderConnections = clients.get(senderId);
+        const recipientConnections = clients.get(recipientId);
+
+        if (senderConnections) {
+            senderConnections.forEach(({ ws }) => {
+                rooms.get(chatId).add(ws);
+            });
+        }
+
+        if (recipientConnections) {
+            recipientConnections.forEach(({ ws }) => {
+                rooms.get(chatId).add(ws);
+            });
+        }
+
+        rooms.get(chatId).forEach((conn) => {
+            if (conn.readyState === WebSocket.OPEN) {
+                conn.send(JSON.stringify(closedMessage));
+            }
+        });
+
+        ws.send(JSON.stringify(closedMessage));
+
+        console.log(`SOS ${sos_id} closed. Chat room ${chatId} updated.`);
+    } catch (error) {
+        console.error("Error handling closed SOS:", error);
     }
-
-    if (!rooms.has(chatId)) {
-        rooms.set(chatId, new Set());
-    }
-
-    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
-    const recipient = sos.length === 0 ? "-" : sos[0].user_id;
-
-    rooms.get(chatId).add(clients.get(sender));
-    rooms.get(chatId).add(clients.get(recipient));
-
-    rooms.get(chatId).forEach(conn => {
-        conn.send(JSON.stringify(closedMessage));
-    });
-
-    ws.send(JSON.stringify(closedMessage));
 }
 
 async function handleMessage(message) {
     const { chat_id, sender, recipient, text } = message
     const msgId = uuidv4()
 
-    const [userSenders, userRecipients] = await Promise.all([
-        User.getProfile({ user_id: sender }),
-        User.getProfile({ user_id: recipient })
-    ])
+    try {
+        const [userSenders, userRecipients] = await Promise.all([
+            User.getProfile({ user_id: sender }),
+            User.getProfile({ user_id: recipient }),
+        ]);
 
-    const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id
-    const senderName = userSenders.length === 0 ? "-" : userSenders[0].username
-    const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar
+        const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id;
+        const senderName = userSenders.length === 0 ? "-" : userSenders[0].username;
+        const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar;
 
-    const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id
-    const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username
-    const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar
+        const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id;
+        const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username;
+        const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar;
 
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
+        await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
 
-    const fcms = await User.getFcm({ user_id: recipientId })
-    const token = fcms.length === 0 ? "-" : fcms[0].token
+        const fcms = await User.getFcm({ user_id: recipientId });
+        const token = fcms.length === 0 ? "-" : fcms[0].token;
 
-    const messageData = {
-        id: msgId,
-        chat_id: chat_id,
-        pair_room: recipient,
-        user: {
-            id: recipientId,
-            name: recipientName,
-            avatar: recipientAvatar,
-            is_me: false,
-        },
-        sender: {
-            id: senderId,
-        },
-        is_read: false,
-        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
-        text: text,
-        type: "text"
-    }
-
-    if (!rooms.has(chat_id)) {
-        rooms.set(chat_id, new Set())
-    }
-
-    rooms.get(chat_id).add(clients.get(sender))
-    rooms.get(chat_id).add(clients.get(recipient))
-
-    rooms.get(chat_id).forEach(conn => {
-        const isRecipient = conn === clients.get(recipient)
-
-        conn.send(JSON.stringify({
-            type: "fetch-message",
-            data: {
-                ...messageData,
-                user: {
-                    id: isRecipient ? recipientId : senderId,
-                    name: isRecipient ? recipientName : senderName,
-                    avatar: isRecipient ? recipientAvatar : senderAvatar,
-                    is_me: !isRecipient,
-                },
+        const messageData = {
+            id: msgId,
+            chat_id: chat_id,
+            pair_room: recipient,
+            user: {
+                id: recipientId,
+                name: recipientName,
+                avatar: recipientAvatar,
+                is_me: false,
             },
-        }))
-    });
-
-    await utils.sendFCM(senderName, text, token, "send-msg")
-
-    if (!messageQueue.has(recipient)) {
-        messageQueue.set(recipient, []);
-    }
-    messageQueue.get(recipient).push(messageData)
-}
-
-async function handleJoin(ws, message) {
-    const { user_id } = message
-
-    console.log(`user_id ${user_id} join`)
-
-    if (clients.has(user_id)) {
-        const oldConn = clients.get(user_id)
-
-        try {
-            oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
-            oldConn.terminate()
-        } catch (error) {
-            console.error("Error terminating old connection:", error)
+            sender: {
+                id: senderId,
+            },
+            is_read: false,
+            sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+            text: text,
+            type: "text"
         }
 
-        clients.delete(user_id)
+        if (!rooms.has(chat_id)) {
+            rooms.set(chat_id, new Set());
+        }
 
-        console.log(`Old connection for client ${user_id} replaced by new connection.`)
-    }
+        rooms.get(chat_id).add(clients.get(sender))
+        rooms.get(chat_id).add(clients.get(recipient))
 
-    clients.set(user_id, ws)
+        rooms.get(chat_id).forEach((conn) => {
+            const isRecipient = conn === clients.get(recipient);
 
-    deliverQueuedMessages(ws, user_id)
+            conn.send(JSON.stringify({
+                type: "fetch-message",
+                data: {
+                    ...messageData,
+                    user: {
+                        id: isRecipient ? recipientId : senderId,
+                        name: isRecipient ? recipientName : senderName,
+                        avatar: isRecipient ? recipientAvatar : senderAvatar,
+                        is_me: !isRecipient,
+                    },
+                },
+            }));
+        });
 
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
+        await utils.sendFCM(senderName, text, token, "send-msg")
+
+        if (!messageQueue.has(recipient)) {
+            messageQueue.set(recipient, [])
+        }
+        messageQueue.get(recipient).push(messageData)
+
+    } catch (error) {
+        console.error("Error handling message:", error)
     }
 }
 
-async function handleLeave(_, message) {
-    const { user_id } = message
 
-    console.log(`user_id ${user_id} leave`)
+// async function handleLeave(_, message) {
+//     const { user_id } = message
 
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
-    }
+//     console.log(`user_id ${user_id} leave`)
 
-    clients.delete(user_id)
-}
+//     for (const socket of clients.values()) {
+//         socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
+//     }
 
+//     clients.delete(user_id)
+// }
+
+// async function handleSos(message) {
+//     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
+
+//     try {
+//         const continent = utils.countryCompareContinent("Japan");
+        
+//         const agents = await Agent.userAgent(continent);
+
+//         const sosType = ext === "jpg" ? 1 : 2;
+
+//         const platformType = platform_type === "raksha" ? 1 : 2
+
+//         await Sos.broadcast(
+//             sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType
+//         );
+
+//         const dataGetProfile = { user_id }
+//         const sender = await User.getProfile(dataGetProfile)
+//         const senderName = sender.length === 0 ? "-" : sender[0].username
+//         const senderId = user_id;
+
+//         for (const [userId, client] of clients) {
+//             if (client.readyState === WebSocketServer.OPEN) {
+//                 const relevantAgent = agents.find(agent => agent.user_id === userId)
+//                 if (relevantAgent) {
+//                     const payload = {
+//                         type: "sos",
+//                         id: sos_id,
+//                         sender: {
+//                             id: senderId,
+//                             name: senderName
+//                         },
+//                         media,
+//                         media_type: sosType === 1 ? "image" : "video",
+//                         created: utils.formatDateWithSos(new Date()),
+//                         created_at: utils.formatDateWithSos(new Date()),
+//                         country,
+//                         location,
+//                         time,
+//                         lat,
+//                         lng,
+//                         platform_type
+//                     }
+//                     client.send(JSON.stringify(payload))
+//                 }
+//             }
+//         }
+//     } catch (error) {
+//         console.error('Error handling SOS:', error)
+//     }
+// }
+
+
+// async function handleAgentConfirmSos(ws, message) {
+//     const { sos_id, user_agent_id } = message;
+
+//     const chatId = uuidv4();
+
+//     const sos = await Sos.findById(sos_id);
+//     const status = sos.length === 0 ? '-' : sos[0].status
+//     const senderId = sos.length === 0 ? '-' : sos[0].user_id
+
+//     const broadcastToSender = clients.get(senderId);
+
+//     const dataGetProfileAgent = { user_id: user_agent_id }
+//     const agents = await User.getProfile(dataGetProfileAgent)
+//     const agentId = agents.length === 0 ? "-" : agents[0].user_id
+//     const agentName = agents.length === 0 ? "-" : agents[0].username
+
+//     const dataGetProfileSender = { user_id: senderId }
+//     const users = await User.getProfile(dataGetProfileSender)
+//     const senderName = users.length === 0 ? "-" : users[0].username
+
+//     const dataFcm = { user_id: senderId }
+//     const fcms = await User.getFcm(dataFcm)
+//     const token = fcms.length === 0 ? "-" : fcms[0].token
+
+//     await Chat.insertChat(chatId, senderId, user_agent_id, sos_id)
+//     await Sos.approvalConfirm(sos_id, user_agent_id);
+
+//     if (!rooms.has(chatId)) {
+//         rooms.set(chatId, new Set())
+//     }
+//     rooms.get(chatId).add(ws)
+//     if (broadcastToSender) {
+//         rooms.get(chatId).add(broadcastToSender)
+//     }
+
+//     const confirmationMessage = {
+//         type: `confirm-sos`,
+//         sos_id: sos_id,
+//         chat_id: chatId,
+//         status: status,
+//         agent_id: agentId,
+//         agent_name: agentName,
+//         sender_id: senderId,
+//         recipient_id: user_agent_id,
+//     };
+
+//     rooms.get(chatId).forEach(conn => {
+//         conn.send(JSON.stringify(confirmationMessage));
+//     });
+
+//     await utils.sendFCM(
+//         `${agentName} telah terhubung dengan Anda`,
+//         `Halo ${senderName}`,
+//         token,
+//         "agent-confirm-sos"
+//     );
+// }
+
+
+// async function handleUserResolvedSos(ws, message) {
+//     const { sos_id } = message
+
+//     const sos = await Sos.findById(sos_id)
+//     const chats = await Chat.getChatBySosId(sos_id)
+
+//     const chatId = chats.length === 0 ? "-" : chats[0].uid
+//     const userId = sos.length === 0 ? "-" : sos[0].user_id
+
+//     await Sos.moveSosToResolved(sos_id)
+//     await Sos.updateExpireMessages(chatId)
+
+//     const dataFcm = { user_id: userId }
+//     const fcms = await User.getFcm(dataFcm)
+//     const token = fcms.length === 0 ? "-" : fcms[0].token
+
+//     await utils.sendFCM(
+//         `Anda telah menyelesaikan kasus ini`,
+//         `Terima kasih telah menggunakan layanan Raksha`,
+//         token,
+//         "agent-resolved-sos"
+//     )
+
+//     const resolvedMessage = {
+//         type: "resolved-sos",
+//         chat_id: chatId,
+//         sos_id: sos_id,
+//         message: `Terima kasih telah menggunakan layanan Raksha`,
+//     }
+
+//     if (!rooms.has(chatId)) {
+//         rooms.set(chatId, new Set())
+//     }
+
+//     const sender = sos.length === 0 ? "-" : sos[0].user_agent_id
+//     const recipient = sos.length === 0 ? "-" : sos[0].user_id
+
+//     rooms.get(chatId).add(clients.get(sender))
+//     rooms.get(chatId).add(clients.get(recipient))
+
+//     rooms.get(chatId).forEach(conn => {
+//         conn.send(JSON.stringify(resolvedMessage))
+//     })
+
+//     ws.send(JSON.stringify(resolvedMessage))
+// }
+
+// async function handleAgentClosedSos(ws, message) {
+//     const { sos_id, note } = message
+
+//     const sos = await Sos.findById(sos_id)
+//     const chats = await Chat.getChatBySosId(sos_id)
+
+//     const chatId = chats.length === 0 ? "-" : chats[0].uid
+//     const userId = sos.length === 0 ? "-" : sos[0].user_agent_id
+//     const recipientId = sos.length === 0 ? "-" : sos[0].user_id
+
+//     await Sos.moveSosToClosed(sos_id)
+//     await Sos.updateExpireMessages(chatId)
+
+//     const dataFcm = { user_id: recipientId }
+//     const fcms = await User.getFcm(dataFcm)
+//     const token = fcms.length === 0 ? "-" : fcms[0].token
+
+//     const dataGetProfileAgent = { user_id: userId }
+//     const agents = await User.getProfile(dataGetProfileAgent)
+//     const agentName = agents.length === 0 ? "-" : agents[0].username
+
+//     await utils.sendFCM(`${agentName} telah menutup kasus ini`, note, token, "agent-closed-sos")
+
+//     const closedMessage = {
+//         type: `closed-sos`,
+//         chat_id: chatId,
+//         sos_id: sos_id,
+//         message: note,
+//     }
+
+//     if (!rooms.has(chatId)) {
+//         rooms.set(chatId, new Set());
+//     }
+
+//     const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
+//     const recipient = sos.length === 0 ? "-" : sos[0].user_id;
+
+//     rooms.get(chatId).add(clients.get(sender));
+//     rooms.get(chatId).add(clients.get(recipient));
+
+//     rooms.get(chatId).forEach(conn => {
+//         conn.send(JSON.stringify(closedMessage));
+//     });
+
+//     ws.send(JSON.stringify(closedMessage));
+// }
+
+// async function handleMessage(message) {
+//     const { chat_id, sender, recipient, text } = message
+//     const msgId = uuidv4()
+
+//     const [userSenders, userRecipients] = await Promise.all([
+//         User.getProfile({ user_id: sender }),
+//         User.getProfile({ user_id: recipient })
+//     ])
+
+//     const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id
+//     const senderName = userSenders.length === 0 ? "-" : userSenders[0].username
+//     const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar
+
+//     const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id
+//     const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username
+//     const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar
+
+//     await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
+
+//     const fcms = await User.getFcm({ user_id: recipientId })
+//     const token = fcms.length === 0 ? "-" : fcms[0].token
+
+//     const messageData = {
+//         id: msgId,
+//         chat_id: chat_id,
+//         pair_room: recipient,
+//         user: {
+//             id: recipientId,
+//             name: recipientName,
+//             avatar: recipientAvatar,
+//             is_me: false,
+//         },
+//         sender: {
+//             id: senderId,
+//         },
+//         is_read: false,
+//         sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+//         text: text,
+//         type: "text"
+//     }
+
+//     if (!rooms.has(chat_id)) {
+//         rooms.set(chat_id, new Set())
+//     }
+
+//     rooms.get(chat_id).add(clients.get(sender))
+//     rooms.get(chat_id).add(clients.get(recipient))
+
+//     rooms.get(chat_id).forEach(conn => {
+//         const isRecipient = conn === clients.get(recipient)
+
+//         conn.send(JSON.stringify({
+//             type: "fetch-message",
+//             data: {
+//                 ...messageData,
+//                 user: {
+//                     id: isRecipient ? recipientId : senderId,
+//                     name: isRecipient ? recipientName : senderName,
+//                     avatar: isRecipient ? recipientAvatar : senderAvatar,
+//                     is_me: !isRecipient,
+//                 },
+//             },
+//         }))
+//     });
+
+//     await utils.sendFCM(senderName, text, token, "send-msg")
+
+//     if (!messageQueue.has(recipient)) {
+//         messageQueue.set(recipient, []);
+//     }
+//     messageQueue.get(recipient).push(messageData)
+// }
 
 function deliverQueuedMessages(recipientSocket, recipientId) {
     if (messageQueue.has(recipientId)) {
@@ -402,18 +782,18 @@ function deliverQueuedMessages(recipientSocket, recipientId) {
 }
 
 
-function handleDisconnect(ws) {
-    for (const [user_id, socket] of clients.entries()) {
-        if (socket === ws) {
+// function handleDisconnect(ws) {
+//     for (const [user_id, socket] of clients.entries()) {
+//         if (socket === ws) {
 
-            clients.delete(user_id)
+//             clients.delete(user_id)
 
-            socket.send(JSON.stringify({ type: 'user_offline', user_id: user_id }))
+//             socket.send(JSON.stringify({ type: 'user_offline', user_id: user_id }))
             
-            break;
-        }
-    }
-}
+//             break;
+//         }
+//     }
+// }
 
 server.listen(process.env.PORT, function () {
     console.log(`Listening on port ${process.env.PORT}`)
