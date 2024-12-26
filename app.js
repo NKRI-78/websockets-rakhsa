@@ -24,8 +24,7 @@ const wss = new WebSocketServer.Server({ server })
 
 const clients = new Map()
 const messageQueue = new Map()
-const rooms = new Map()
-const sessions = new Map()
+const rooms = new Map();
 
 wss.on("connection", (ws, _) => {
 
@@ -71,22 +70,6 @@ wss.on("connection", (ws, _) => {
     }
 })
 
-function removeSession(sessionId, user_id) {
-    clients.delete(sessionId);
-
-    const userSessions = sessions.get(user_id)
-    if (userSessions) {
-        const index = userSessions.indexOf(sessionId)
-        if (index !== -1) {
-            userSessions.splice(index, 1)
-        }
-    }
-
-    if (userSessions && userSessions.length === 0) {
-        sessions.delete(user_id)
-    }
-}
-
 async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
 
@@ -108,10 +91,9 @@ async function handleSos(message) {
         const senderName = sender.length === 0 ? "-" : sender[0].username
         const senderId = user_id;
 
-        for (const [sessionId, client] of clients) {
-            const userSessions = sessions.get(user_id)
-            if (userSessions && userSessions.includes(sessionId) && client.readyState === WebSocket.OPEN) {
-                const relevantAgent = agents.find(agent => agent.user_id === user_id)
+        for (const [userId, client] of clients) {
+            if (client.readyState === WebSocketServer.OPEN) {
+                const relevantAgent = agents.find(agent => agent.user_id === userId)
                 if (relevantAgent) {
                     const payload = {
                         type: "sos",
@@ -131,7 +113,6 @@ async function handleSos(message) {
                         lng,
                         platform_type
                     }
-
                     client.send(JSON.stringify(payload))
                 }
             }
@@ -373,28 +354,28 @@ async function handleJoin(ws, message) {
 
     console.log(`user_id ${user_id} join`)
 
-    const sessionId = utils.generateNanoId()
+    if (clients.has(user_id)) {
+        const oldConn = clients.get(user_id)
 
-    clients.set(sessionId, ws)
+        try {
+            oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
+            oldConn.terminate()
+        } catch (error) {
+            console.error("Error terminating old connection:", error)
+        }
 
-    if (!sessions.has(user_id)) {
-        sessions.set(user_id, []);
+        clients.delete(user_id)
+
+        console.log(`Old connection for client ${user_id} replaced by new connection.`)
     }
 
-    sessions.get(user_id).push(sessionId);
- 
-    console.log(`Session ID ${sessionId} created for user ${user_id}`);
+    clients.set(user_id, ws)
 
     deliverQueuedMessages(ws, user_id)
 
     for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_online", user_id: user_id, session_id: sessionId }));
+        socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
     }
-
-    ws.on('close', () => {
-        console.log(`Connection for session ${sessionId} closed`);
-        removeSession(sessionId, user_id);
-    });
 }
 
 async function handleLeave(_, message) {
