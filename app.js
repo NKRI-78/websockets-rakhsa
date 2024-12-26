@@ -381,25 +381,41 @@ async function handleMessage(message) {
                 },
             },
         }))
-    });
-
-    await utils.sendFCM(senderName, text, token, "send-msg")
-
+    })
+    
     if (!messageQueue.has(recipient)) {
         messageQueue.set(recipient, []);
     }
     messageQueue.get(recipient).push(messageData)
+
+    await utils.sendFCM(senderName, text, token, "send-msg")
 }
 
 function deliverQueuedMessages(recipientSocket, recipientId) {
     if (messageQueue.has(recipientId)) {
         const queuedMessages = messageQueue.get(recipientId)
-        setTimeout(() => {
+
+        if (queuedMessages.length > 0) {
+            console.log(`Delivering ${queuedMessages.length} messages to recipient ${recipientId}`)
+
             queuedMessages.forEach((msg) => {
-                recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
-            })
-        }, 2000)
-        messageQueue.delete(recipientId)
+                try {
+                    if (recipientSocket.readyState === WebSocket.OPEN) {
+                        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }))
+                    } else {
+                        console.warn(`Socket for recipient ${recipientId} is not open.`)
+                    }
+                } catch (error) {
+                    console.error(`Error delivering message to ${recipientId}:`, error)
+                }
+            });
+
+            messageQueue.delete(recipientId)
+        } else {
+            console.log(`No queued messages for recipient ${recipientId}`)
+        }
+    } else {
+        console.log(`No messages in queue for recipient ${recipientId}`)
     }
 }
 
