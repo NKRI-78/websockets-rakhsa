@@ -50,7 +50,7 @@ wss.on("connection", (ws, _) => {
                 handleAgentConfirmSos(ws, parsedMessage)
             break;
             case 'user-resolved-sos':
-                handleUserResolvedSos(ws, parsedMessage)
+                handleUserResolvedSos(parsedMessage)
             break;
             case 'agent-closed-sos': 
                 handleAgentClosedSos(ws, parsedMessage)
@@ -105,26 +105,25 @@ async function handleJoin(ws, message) {
 }
 
 async function handleLeave(ws, message) {
-    const { user_id } = message;
+    const { user_id } = message
 
-    console.log(`user_id ${user_id} leave`);
+    console.log(`user_id ${user_id} leave`)
 
     if (clients.has(user_id)) {
-        const userConnections = clients.get(user_id);
-        userConnections.delete(ws);
+        const userConnections = clients.get(user_id)
+        userConnections.delete(ws)
 
         if (userConnections.size === 0) {
-            clients.delete(user_id);
+            clients.delete(user_id)
 
             for (const socketSet of clients.values()) {
                 for (const socket of socketSet) {
-                    socket.send(JSON.stringify({ type: "user_offline", user_id }));
+                    socket.send(JSON.stringify({ type: "user_offline", user_id }))
                 }
             }
         }
     }
 }
-
 
 async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
@@ -243,28 +242,16 @@ async function handleAgentConfirmSos(ws, message) {
 }
 
 
-async function handleUserResolvedSos(ws, message) {
+async function handleUserResolvedSos(message) {
     const { sos_id } = message
 
     const sos = await Sos.findById(sos_id)
     const chats = await Chat.getChatBySosId(sos_id)
 
     const chatId = chats.length === 0 ? "-" : chats[0].uid
-    const userId = sos.length === 0 ? "-" : sos[0].user_id
 
     await Sos.moveSosToResolved(sos_id)
     await Sos.updateExpireMessages(chatId)
-
-    const dataFcm = { user_id: userId }
-    const fcms = await User.getFcm(dataFcm)
-    const token = fcms.length === 0 ? "-" : fcms[0].token
-
-    await utils.sendFCM(
-        `Anda telah menyelesaikan kasus ini`,
-        `Terima kasih telah menggunakan layanan Raksha`,
-        token,
-        "agent-resolved-sos"
-    )
 
     const resolvedMessage = {
         type: "resolved-sos",
@@ -286,8 +273,6 @@ async function handleUserResolvedSos(ws, message) {
     rooms.get(chatId).forEach(conn => {
         conn.send(JSON.stringify(resolvedMessage))
     })
-
-    ws.send(JSON.stringify(resolvedMessage))
 }
 
 async function handleAgentClosedSos(ws, message) {
