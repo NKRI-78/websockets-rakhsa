@@ -66,10 +66,6 @@ module.exports = {
         return moment(date).subtract(d, 'days').locale('id').format('yyyy/MM/DD')
     },
 
-    formatDateWithSos: (date) => {
-        return moment(date).locale('id').format('yyyy-MM-DD')
-    },
-
     formatDateWithSeconds: (date) => {
         return moment(date).locale('id').format('yyyy/MM/DD H:mm:ss')
     },
