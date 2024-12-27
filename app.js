@@ -184,10 +184,8 @@ async function handleUserResolvedSos(message) {
         if (conn.readyState === WebSocketServer.OPEN) {
             conn.send(JSON.stringify({
                 type: "resolved-by-user",
-                data: {
-                    sos_id: sos_id,
-                    text: `${recipientName} telah menyatakan kasus telah selesai`
-                }
+                sos_id: sos_id,
+                text: `${recipientName} telah menyatakan kasus telah selesai`
             }));
         }
     });
