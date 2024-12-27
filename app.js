@@ -170,6 +170,10 @@ async function handleUserResolvedSos(message) {
     const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
     const recipient = sos.length === 0 ? "-" : sos[0].user_id;
 
+    const users = await User.getProfile({ user_id: recipient });
+
+    const recipientName = users.length === 0 ? "-" : users[0].username;
+
     const senderConnections = clients.get(sender) || new Set();
     const recipientConnections = clients.get(recipient) || new Set();
 
@@ -181,8 +185,8 @@ async function handleUserResolvedSos(message) {
             conn.send(JSON.stringify({
                 type: "resolved-by-user",
                 data: {
-                    chat_id: chatId,
                     sos_id: sos_id,
+                    text: `${recipientName} telah menyatakan kasus telah selesai`
                 }
             }));
         }
