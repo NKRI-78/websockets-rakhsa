@@ -31,6 +31,9 @@ wss.on("connection", (ws, _) => {
             case 'leave': 
                 handleLeave(ws, parsedMessage);
                 break;
+            case 'user-resolved-sos':
+                handleUserResolvedSos(parsedMessage);
+                break;
             case 'message': 
                 handleMessage(parsedMessage); 
                 break;
@@ -152,6 +155,40 @@ async function handleSos(message) {
     }
 }
 
+async function handleUserResolvedSos(message) {
+    const { sos_id } = message;
+
+    const sos = await Sos.findById(sos_id);
+    const chats = await Chat.getChatBySosId(sos_id);
+
+    const chatId = chats.length === 0 ? "-" : chats[0].uid;
+
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set());
+    }
+
+    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
+    const recipient = sos.length === 0 ? "-" : sos[0].user_id;
+
+    const senderConnections = clients.get(sender) || new Set();
+    const recipientConnections = clients.get(recipient) || new Set();
+
+    senderConnections.forEach(conn => rooms.get(chatId).add(conn));
+    recipientConnections.forEach(conn => rooms.get(chatId).add(conn));
+
+    rooms.get(chatId).forEach(conn => {
+        if (conn.readyState === WebSocketServer.OPEN) {
+            conn.send(JSON.stringify({
+                type: "resolved-by-user",
+                data: {
+                    chat_id: chatId,
+                    sos_id: sos_id,
+                }
+            }));
+        }
+    });
+}
+
 async function handleMessage(message) {
     const { chat_id, sender, recipient, text } = message;
     const msgId = uuidv4();
@@ -193,7 +230,6 @@ async function handleMessage(message) {
         type: "text",
     };
 
-    // Add connections to room
     if (!rooms.has(chat_id)) {
         rooms.set(chat_id, new Set());
     }
