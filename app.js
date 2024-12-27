@@ -146,33 +146,38 @@ async function handleSos(message) {
         const sender = await User.getProfile(dataGetProfile)
         const senderName = sender.length === 0 ? "-" : sender[0].username
         const senderId = user_id;
+        
+        for (const [userId, webSocketSet] of clients.entries()) {
+            const relevantAgent = agents.find(agent => agent.user_id === userId);
 
-        for (const [userId, client] of clients) {
-            if (client.readyState === WebSocketServer.OPEN) {
-                const relevantAgent = agents.find(agent => agent.user_id === userId)
-                if (relevantAgent) {
-                    const payload = {
-                        type: "sos",
-                        id: sos_id,
-                        sender: {
-                            id: senderId,
-                            name: senderName
-                        },
-                        media,
-                        media_type: sosType === 1 ? "image" : "video",
-                        created: utils.formatDateWithSos(new Date()),
-                        created_at: utils.formatDateWithSos(new Date()),
-                        country,
-                        location,
-                        time,
-                        lat,
-                        lng,
-                        platform_type
+            if (relevantAgent) {
+                const payload = {
+                    type: "sos",
+                    id: sos_id,
+                    sender: {
+                        id: senderId,
+                        name: senderName
+                    },
+                    media,
+                    media_type: sosType === 1 ? "image" : "video",
+                    created: utils.formatDateWithSos(new Date()),
+                    created_at: utils.formatDateWithSos(new Date()),
+                    country,
+                    location,
+                    time,
+                    lat,
+                    lng,
+                    platform_type
+                };
+
+                for (const client of webSocketSet) {
+                    if (client.readyState === WebSocketServer.OPEN) {
+                        client.send(JSON.stringify(payload));
                     }
-                    client.send(JSON.stringify(payload))
                 }
             }
         }
+        
     } catch (error) {
         console.error('Error handling SOS:', error)
     }
