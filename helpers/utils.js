@@ -46,6 +46,10 @@ module.exports = {
         return moment(date).locale('id').format('dddd, d MMMM YYYY')
     },
 
+    formatTime() {
+        return moment().tz("Asia/Jakarta").format('HH:mm')
+    },
+
     formatDateTimeAgo (date) {
         return moment(date).locale('id').fromNow()
     },

@@ -7,7 +7,6 @@ const { createServer } = require('http')
 const WebSocketServer = require('ws')
 
 const express = require('express')
-const moment = require('moment-timezone')
 
 const Chat = require("./models/Chat")
 const Sos = require("./models/Sos")
@@ -24,15 +23,11 @@ const wss = new WebSocketServer.Server({ server })
 
 const clients = new Map()
 const messageQueue = new Map()
-const rooms = new Map();
+const rooms = new Map()
 
 wss.on("connection", (ws, _) => {
 
-    const pingInterval = setInterval(() => {
-        if (ws.readyState === ws.OPEN) {
-            ws.ping(); 
-        }
-    }, 30000);
+    ws.isAlive = true
 
     ws.on("message", message => {
 
@@ -64,21 +59,30 @@ wss.on("connection", (ws, _) => {
                 break;
         }
     })
+
+    ws.on('pong', () => {
+        ws.isAlive = true
+    })
  
     ws.on("close", () => {
         console.log("Server disconnect")
-        clearInterval(pingInterval)
+        clearInterval(interval)
         handleDisconnect(ws)
     })
 
     ws.onerror = function () {
         console.log("Some error occurred")
     }
-
-    ws.on("pong", () => {
-        console.log("Pong received from client")
-    });
 })
+
+const interval = setInterval(function ping() {
+    wss.clients.forEach(function each(ws) {
+      if (ws.isAlive === false) return ws.terminate()
+  
+      ws.isAlive = false
+      ws.ping()
+    })
+}, 10000)
 
 async function handleJoin(ws, message) {
     const { user_id } = message
@@ -364,7 +368,7 @@ async function handleMessage(message) {
             id: senderId,
         },
         is_read: false,
-        sent_time: moment().tz("Asia/Jakarta").format('HH:mm'),
+        sent_time: utils.formatTime(),
         text: text,
         type: "text"
     }
@@ -437,8 +441,6 @@ async function deliverQueuedMessages(recipientSocket, recipientId) {
         console.log(`No messages in queue for recipient ${recipientId}`)
     }
 }
-
-
 
 function handleDisconnect(ws) {
     for (const [user_id, socket] of clients.entries()) {
