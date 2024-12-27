@@ -1,237 +1,283 @@
 require("dotenv").config();
 
-const { v4: uuidv4 } = require("uuid");
-const { createServer } = require("http");
-const WebSocketServer = require("ws");
-const express = require("express");
-
+const { v4: uuidv4 } = require('uuid');
+const { createServer } = require('http');
+const WebSocketServer = require('ws');
+const express = require('express');
 const Chat = require("./models/Chat");
 const Sos = require("./models/Sos");
 const User = require("./models/User");
 const Agent = require("./models/Agent");
-
 const utils = require("./helpers/utils");
 
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer.Server({ server });
 
-const clients = new Map(); // Stores active WebSocket connections
-const messageQueue = new Map(); // Stores queued messages for offline users
-const rooms = new Map(); // Stores active chat rooms
+const clients = new Map();
+const messageQueue = new Map();
+const rooms = new Map();
 
-// WebSocket Connection Handling
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, _) => {
     ws.isAlive = true;
 
-    ws.on("message", async (message) => {
-        try {
-            const parsedMessage = JSON.parse(message);
-            await handleWebSocketMessage(ws, parsedMessage);
-        } catch (err) {
-            console.error("Error processing message:", err.message);
+    ws.on("message", message => {
+        const parsedMessage = JSON.parse(message);
+
+        switch (parsedMessage.type) {
+            case 'join':
+                handleJoin(ws, parsedMessage);
+                break;
+            case 'leave': 
+                handleLeave(ws, parsedMessage);
+                break;
+            case 'message': 
+                handleMessage(parsedMessage); 
+                break;
+            case 'sos':
+                handleSos(parsedMessage);
+                break;
+            default:
+                break;
         }
     });
 
-    ws.on("pong", () => {
+    ws.on('pong', () => {
         ws.isAlive = true;
     });
 
     ws.on("close", () => {
-        console.log("Client disconnected");
+        console.log("Server disconnect");
+        clearInterval(interval);
         handleDisconnect(ws);
     });
 
-    ws.onerror = (error) => {
-        console.error("WebSocket error:", error.message);
+    ws.onerror = function () {
+        console.log("Some error occurred");
     };
 });
 
-// Ping-Pong for Keeping Connections Alive
-setInterval(() => {
-    wss.clients.forEach((ws) => {
-        if (!ws.isAlive) return ws.terminate();
+const interval = setInterval(function ping() {
+    wss.clients.forEach(function each(ws) {
+        if (ws.isAlive === false) return ws.terminate();
         ws.isAlive = false;
         ws.ping();
     });
 }, 10000);
 
-// WebSocket Message Handler
-async function handleWebSocketMessage(ws, message) {
-    switch (message.type) {
-        case "join":
-            await handleJoin(ws, message);
-            break;
-        case "leave":
-            handleLeave(ws, message);
-            break;
-        case "message":
-            await handleMessage(message);
-            break;
-        case "sos":
-            await handleSos(message);
-            break;
-        default:
-            console.warn("Unknown message type:", message.type);
-            break;
-    }
-}
+async function handleJoin(ws, message) {
+    const { user_id } = message;
 
-// User Joins Chat
-async function handleJoin(ws, { user_id }) {
-    console.log(`User ${user_id} joined`);
+    console.log(`user_id ${user_id} join`);
 
     if (!clients.has(user_id)) {
         clients.set(user_id, new Set());
     }
+
     clients.get(user_id).add(ws);
+    deliverQueuedMessages(ws, user_id);
 
-    await deliverQueuedMessages(ws, user_id);
-
-    broadcastToClients({ type: "user_online", user_id });
-}
-
-// User Leaves Chat
-function handleLeave(ws, { user_id }) {
-    console.log(`User ${user_id} left`);
-
-    const userConnections = clients.get(user_id);
-    if (userConnections) {
-        userConnections.delete(ws);
-        if (userConnections.size === 0) {
-            clients.delete(user_id);
-            broadcastToClients({ type: "user_offline", user_id });
+    for (const socketSet of clients.values()) {
+        for (const socket of socketSet) {
+            socket.send(JSON.stringify({ type: "user_online", user_id }));
         }
     }
 }
 
-// Handle SOS Messages
+async function handleLeave(ws, message) {
+    const { user_id } = message;
+
+    console.log(`user_id ${user_id} leave`);
+
+    if (clients.has(user_id)) {
+        const userConnections = clients.get(user_id);
+        userConnections.delete(ws);
+
+        if (userConnections.size === 0) {
+            clients.delete(user_id);
+
+            for (const socketSet of clients.values()) {
+                for (const socket of socketSet) {
+                    socket.send(JSON.stringify({ type: "user_offline", user_id }));
+                }
+            }
+        }
+    }
+}
+
 async function handleSos(message) {
     const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
 
-    const continent = utils.countryCompareContinent(country);
+    const continent = utils.countryCompareContinent("Japan");
     const agents = await Agent.userAgent(continent);
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
 
     await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
 
-    const senderProfile = await User.getProfile({ user_id });
-    const senderName = senderProfile.length ? senderProfile[0].username : "-";
+    const dataGetProfile = { user_id };
+    const sender = await User.getProfile(dataGetProfile);
+    const senderName = sender.length === 0 ? "-" : sender[0].username;
+    const senderId = user_id;
 
-    agents.forEach(({ user_id: agentId }) => {
-        if (clients.has(agentId)) {
-            const payload = createSosPayload(message, senderName, sos_id);
-            sendToClientSet(clients.get(agentId), payload);
+    for (const [userId, webSocketSet] of clients.entries()) {
+        const relevantAgent = agents.find(agent => agent.user_id === userId);
+
+        if (relevantAgent) {
+            const payload = {
+                type: "sos",
+                id: sos_id,
+                sender: {
+                    id: senderId,
+                    name: senderName,
+                },
+                media,
+                media_type: sosType === 1 ? "image" : "video",
+                created: utils.formatDate(new Date()),
+                created_at: utils.formatDate(new Date()),
+                country,
+                location,
+                time,
+                lat,
+                lng,
+                platform_type,
+            };
+
+            for (const client of webSocketSet) {
+                if (client.readyState === WebSocketServer.OPEN) {
+                    client.send(JSON.stringify(payload));
+                }
+            }
         }
-    });
+    }
 }
 
-// Handle Chat Messages
-async function handleMessage({ chat_id, sender, recipient, text }) {
+async function handleMessage(message) {
+    const { chat_id, sender, recipient, text } = message;
     const msgId = uuidv4();
 
-    const [senderProfile, recipientProfile] = await Promise.all([
+    const [userSenders, userRecipients] = await Promise.all([
         User.getProfile({ user_id: sender }),
         User.getProfile({ user_id: recipient }),
     ]);
 
-    const senderData = formatUserProfile(senderProfile);
-    const recipientData = formatUserProfile(recipientProfile);
+    const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id;
+    const senderName = userSenders.length === 0 ? "-" : userSenders[0].username;
+    const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar;
+
+    const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id;
+    const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username;
+    const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar;
 
     await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
 
-    const messageData = createMessagePayload(msgId, chat_id, text, senderData, recipientData);
+    const fcms = await User.getFcm({ user_id: recipientId });
+    const token = fcms.length === 0 ? "-" : fcms[0].token;
 
-    addMessageToRoom(chat_id, sender, recipient, messageData);
-    addToQueue(recipient, messageData);
-
-    const recipientToken = (await User.getFcm({ user_id: recipient }))?.[0]?.token || "-";
-    await utils.sendFCM(senderData.name, text, recipientToken, "send-msg");
-}
-
-// Send Queued Messages
-async function deliverQueuedMessages(ws, recipientId) {
-    const queuedMessages = messageQueue.get(recipientId) || [];
-    for (const msg of queuedMessages) {
-        try {
-            await sendMessage(ws, msg);
-        } catch (err) {
-            console.error("Error delivering message:", err.message);
-        }
-    }
-    messageQueue.delete(recipientId);
-}
-
-// Utility Functions
-function broadcastToClients(message) {
-    clients.forEach((socketSet) =>
-        sendToClientSet(socketSet, message)
-    );
-}
-
-function sendToClientSet(clientSet, message) {
-    clientSet.forEach((ws) => {
-        if (ws.readyState === WebSocketServer.OPEN) {
-            ws.send(JSON.stringify(message));
-        }
-    });
-}
-
-function createSosPayload(message, senderName, sos_id) {
-    return {
-        type: "sos",
-        id: sos_id,
-        sender: {
-            name: senderName,
+    const messageData = {
+        id: msgId,
+        chat_id: chat_id,
+        pair_room: recipient,
+        user: {
+            id: recipientId,
+            name: recipientName,
+            avatar: recipientAvatar,
+            is_me: false,
         },
-        ...message,
-    };
-}
-
-function createMessagePayload(id, chat_id, text, senderData, recipientData) {
-    return {
-        id,
-        chat_id,
-        text,
-        sender: senderData,
-        recipient: recipientData,
+        sender: {
+            id: senderId,
+        },
         is_read: false,
         sent_time: utils.formatTime(),
+        text: text,
+        type: "text",
     };
+
+    // Add connections to room
+    if (!rooms.has(chat_id)) {
+        rooms.set(chat_id, new Set());
+    }
+
+    const senderConnections = clients.get(sender) || new Set();
+    const recipientConnections = clients.get(recipient) || new Set();
+
+    senderConnections.forEach(conn => rooms.get(chat_id).add(conn));
+    recipientConnections.forEach(conn => rooms.get(chat_id).add(conn));
+
+    rooms.get(chat_id).forEach(conn => {
+        if (conn.readyState === WebSocketServer.OPEN) {
+            const isRecipient = Array.from(clients.get(recipient) || []).includes(conn);
+
+            conn.send(JSON.stringify({
+                type: "fetch-message",
+                data: {
+                    ...messageData,
+                    user: {
+                        id: isRecipient ? recipientId : senderId,
+                        name: isRecipient ? recipientName : senderName,
+                        avatar: isRecipient ? recipientAvatar : senderAvatar,
+                        is_me: !isRecipient,
+                    },
+                },
+            }));
+        }
+    });
+
+    if (!messageQueue.has(recipient)) {
+        messageQueue.set(recipient, []);
+    }
+    messageQueue.get(recipient).push(messageData);
+
+    await utils.sendFCM(senderName, text, token, "send-msg");
 }
 
-function formatUserProfile(profile) {
-    if (!profile.length) return { id: "-", name: "-", avatar: "-" };
-    const { user_id, username, avatar } = profile[0];
-    return { id: user_id, name: username, avatar };
-}
+async function deliverQueuedMessages(recipientSocket, recipientId) {
+    if (messageQueue.has(recipientId)) {
+        const queuedMessages = messageQueue.get(recipientId);
 
-function addMessageToRoom(chat_id, sender, recipient, message) {
-    if (!rooms.has(chat_id)) rooms.set(chat_id, new Set());
-    rooms.get(chat_id).add(clients.get(sender));
-    rooms.get(chat_id).add(clients.get(recipient));
-    sendToClientSet(rooms.get(chat_id), message);
-}
+        if (queuedMessages.length > 0) {
+            console.log(`Delivering ${queuedMessages.length} messages to recipient ${recipientId}`);
 
-function addToQueue(recipient, message) {
-    if (!messageQueue.has(recipient)) messageQueue.set(recipient, []);
-    messageQueue.get(recipient).push(message);
+            for (let i = 0; i < queuedMessages.length; i++) {
+                const msg = queuedMessages[i];
+
+                try {
+                    await new Promise((resolve, reject) => {
+                        recipientSocket.send(JSON.stringify({ type: "fetch-message", data: msg }), (error) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve();
+                            }
+                        });
+                    });
+
+                    console.log(`Message delivered to ${recipientId}:`, msg);
+                } catch (error) {
+                    console.error(`Error delivering message to ${recipientId}:`, error);
+                }
+            }
+
+            console.log(`All messages delivered to ${recipientId}, clearing the queue.`);
+            messageQueue.delete(recipientId);
+        } else {
+            console.log(`No queued messages for recipient ${recipientId}`);
+        }
+    } else {
+        console.log(`No messages in queue for recipient ${recipientId}`);
+    }
 }
 
 function handleDisconnect(ws) {
-    clients.forEach((socketSet, userId) => {
-        if (socketSet.has(ws)) {
-            socketSet.delete(ws);
-            if (socketSet.size === 0) {
-                clients.delete(userId);
-                broadcastToClients({ type: "user_offline", user_id: userId });
-            }
+    for (const [user_id, socket] of clients.entries()) {
+        if (socket === ws) {
+            clients.delete(user_id);
+            socket.send(JSON.stringify({ type: 'user_offline', user_id: user_id }));
+            break;
         }
-    });
+    }
 }
 
-// Start Server
-server.listen(process.env.PORT, () => {
+server.listen(process.env.PORT, function () {
     console.log(`Listening on port ${process.env.PORT}`);
 });
