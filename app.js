@@ -89,40 +89,40 @@ async function handleJoin(ws, message) {
 
     console.log(`user_id ${user_id} join`)
 
-    if (clients.has(user_id)) {
-        const oldConn = clients.get(user_id)
-
-        try {
-            oldConn.send(JSON.stringify({ type: 'close', reason: 'Connection replaced' }))
-            oldConn.terminate()
-        } catch (error) {
-            console.error("Error terminating old connection:", error)
-        }
-
-        clients.delete(user_id)
-
-        console.log(`Old connection for client ${user_id} replaced by new connection.`)
+    if (!clients.has(user_id)) {
+        clients.set(user_id, new Set());
     }
 
-    clients.set(user_id, ws)
+    clients.get(user_id).add(ws)
 
     deliverQueuedMessages(ws, user_id)
 
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_online", user_id: user_id }))
+    for (const socketSet of clients.values()) {
+        for (const socket of socketSet) {
+            socket.send(JSON.stringify({ type: "user_online", user_id }));
+        }
     }
 }
 
-async function handleLeave(_, message) {
-    const { user_id } = message
+async function handleLeave(ws, message) {
+    const { user_id } = message;
 
-    console.log(`user_id ${user_id} leave`)
+    console.log(`user_id ${user_id} leave`);
 
-    for (const socket of clients.values()) {
-        socket.send(JSON.stringify({ type: "user_offline", user_id: user_id }))
+    if (clients.has(user_id)) {
+        const userConnections = clients.get(user_id);
+        userConnections.delete(ws);
+
+        if (userConnections.size === 0) {
+            clients.delete(user_id);
+
+            for (const socketSet of clients.values()) {
+                for (const socket of socketSet) {
+                    socket.send(JSON.stringify({ type: "user_offline", user_id }));
+                }
+            }
+        }
     }
-
-    clients.delete(user_id)
 }
 
 
