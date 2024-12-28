@@ -116,7 +116,14 @@ async function handleSos(message) {
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
 
-    await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    const checkIsSosProcess = await Sos.checkIsSosProccess(user_id); 
+
+    if(checkIsSosProcess.length == 0) {
+        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    } else {
+        const existingSosId = checkIsSosProcess[0].uid;
+        await Sos.updateBroadcast(existingSosId);
+    }
 
     const dataGetProfile = { user_id };
     const sender = await User.getProfile(dataGetProfile);

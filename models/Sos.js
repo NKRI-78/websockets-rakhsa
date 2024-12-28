@@ -36,6 +36,34 @@ module.exports = {
         })
     },
 
+    updateBroadcast: (sosId) => {
+        return new Promise((resolve, reject) => {
+            const query = `UPDATE sos SET created_at = NOW() WHERE uid = ?`
+
+            conn.query(query, [sosId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
+    checkIsSosProccess: (userId) => {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT uid FROM sos WHERE user_id = ? AND sos_activity_type = 3`
+
+            conn.query(query, [userId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
     checkExpireSos: () => {
         return new Promise((resolve, reject) => {
             const query = `SELECT uid 
