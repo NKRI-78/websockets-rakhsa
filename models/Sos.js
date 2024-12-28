@@ -52,7 +52,7 @@ module.exports = {
 
     checkIsSosProccess: (userId) => {
         return new Promise((resolve, reject) => {
-            const query = `SELECT uid FROM sos WHERE user_id = ? AND sos_activity_type = 3`
+            const query = `SELECT uid FROM sos WHERE user_id = ? AND sos_activity_type = 1`
 
             conn.query(query, [userId], (e, result) => {
                 if(e) {
