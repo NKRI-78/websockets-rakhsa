@@ -122,7 +122,7 @@ async function handleSos(message) {
         await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
     } else {
         const existingSosId = checkIsSosProcess[0].uid;
-        await Sos.updateBroadcast(existingSosId);
+        await Sos.updateBroadcast(existingSosId, time);
     }
 
     const dataGetProfile = { user_id };
