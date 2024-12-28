@@ -118,10 +118,13 @@ async function handleSos(message) {
 
     const checkIsSosProcess = await Sos.checkIsSosProccess(user_id); 
 
+    var sosId = sos_id
+
     if(checkIsSosProcess.length == 0) {
         await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
     } else {
         const existingSosId = checkIsSosProcess[0].uid;
+        sosId = existingSosId
         await Sos.updateBroadcast(existingSosId, time);
     }
 
@@ -136,7 +139,7 @@ async function handleSos(message) {
         if (relevantAgent) {
             const payload = {
                 type: "sos",
-                id: sos_id,
+                id: sosId,
                 sender: {
                     id: senderId,
                     name: senderName,
