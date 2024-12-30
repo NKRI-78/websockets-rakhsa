@@ -202,7 +202,7 @@ async function handleUserResolvedSos(message) {
 }
 
 async function handleMessage(message) {
-    const { chat_id, sender, recipient, text } = message;
+    const { chat_id, sender, recipient, text, created_at } = message;
     const msgId = uuidv4();
 
     const [userSenders, userRecipients] = await Promise.all([
@@ -218,7 +218,7 @@ async function handleMessage(message) {
     const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username;
     const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar;
 
-    await Chat.insertMessage(msgId, chat_id, sender, recipient, text);
+    await Chat.insertMessage(msgId, chat_id, sender, recipient, text, created_at);
 
     const fcms = await User.getFcm({ user_id: recipientId });
     const token = fcms.length === 0 ? "-" : fcms[0].token;
