@@ -125,7 +125,7 @@ async function handleSos(message) {
     } else {
         const existingSosId = checkIsSosProcess[0].uid;
         sosId = existingSosId
-        await Sos.updateBroadcast(existingSosId, time);
+        await Sos.updateBroadcast(existingSosId, media, time);
     }
 
     const dataGetProfile = { user_id };
