@@ -116,16 +116,14 @@ async function handleSos(message) {
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
 
-    const checkIsSosProcess = await Sos.checkIsSosProccess(user_id); 
-
-    var sosId = sos_id
+    const checkIsSosProcess = await Sos.checkIsSosProccess(user_id);
 
     if(checkIsSosProcess.length == 0) {
         await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
     } else {
         const existingSosId = checkIsSosProcess[0].uid;
-        sosId = existingSosId
-        await Sos.updateBroadcast(existingSosId, media, time);
+        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+        await Sos.updateBroadcast(existingSosId, time);
     }
 
     const dataGetProfile = { user_id };
@@ -139,7 +137,7 @@ async function handleSos(message) {
         if (relevantAgent) {
             const payload = {
                 type: "sos",
-                id: sosId,
+                id: sos_id,
                 sender: {
                     id: senderId,
                     name: senderName,

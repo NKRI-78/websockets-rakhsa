@@ -36,11 +36,11 @@ module.exports = {
         })
     },
 
-    updateBroadcast: (sosId, media, time) => {
+    updateBroadcast: (sosId) => {
         return new Promise((resolve, reject) => {
-            const query = `UPDATE sos SET created_at = NOW(), media = ?, time = ? WHERE uid = ?`
+            const query = `UPDATE sos SET created_at = NOW(), sos_activity_type = 6 WHERE uid = ?`
 
-            conn.query(query, [media, time, sosId], (e, result) => {
+            conn.query(query, [sosId], (e, result) => {
                 if(e) {
                     reject(new Error(e))
                 } else {
