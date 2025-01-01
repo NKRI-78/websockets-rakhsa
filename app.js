@@ -320,15 +320,7 @@ async function deliverQueuedMessages(recipientSocket, recipientId) {
 async function handleTyping(ws, message) {
     const { chat_id, sender, recipient, is_typing } = message;
 
-    const senderConnections = clients.get(sender) || new Set();
     const recipientConnections = clients.get(recipient) || new Set();
-
-    if (!rooms.has(chat_id)) {
-        rooms.set(chat_id, new Set());
-    }
-
-    senderConnections.forEach((conn) => rooms.get(chat_id).add(conn));
-    recipientConnections.forEach((conn) => rooms.get(chat_id).add(conn));
 
     const typingNotification = {
         type: "typing",
@@ -339,7 +331,7 @@ async function handleTyping(ws, message) {
         },
     };
 
-    rooms.get(chat_id).forEach((conn) => {
+    recipientConnections.forEach((conn) => {
         if (conn.readyState === WebSocketServer.OPEN && conn !== ws) {
             conn.send(JSON.stringify(typingNotification));
         }
