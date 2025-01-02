@@ -121,51 +121,53 @@ async function handleSos(message) {
 
     const time = utils.time();
 
-    const checkIsSosProcess = await Sos.checkIsSosProccess(user_id);
+    console.log(time);
 
-    if(checkIsSosProcess.length == 0) {
-        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
-    } else {
-        const existingSosId = checkIsSosProcess[0].uid;
-        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
-        await Sos.updateBroadcast(existingSosId, time);
-    }
+    // const checkIsSosProcess = await Sos.checkIsSosProccess(user_id);
 
-    const dataGetProfile = { user_id };
-    const sender = await User.getProfile(dataGetProfile);
-    const senderName = sender.length === 0 ? "-" : sender[0].username;
-    const senderId = user_id;
+    // if(checkIsSosProcess.length == 0) {
+    //     await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    // } else {
+    //     const existingSosId = checkIsSosProcess[0].uid;
+    //     await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    //     await Sos.updateBroadcast(existingSosId, time);
+    // }
 
-    for (const [userId, webSocketSet] of clients.entries()) {
-        const relevantAgent = agents.find(agent => agent.user_id === userId);
+    // const dataGetProfile = { user_id };
+    // const sender = await User.getProfile(dataGetProfile);
+    // const senderName = sender.length === 0 ? "-" : sender[0].username;
+    // const senderId = user_id;
 
-        if (relevantAgent) {
-            const payload = {
-                type: "sos",
-                id: sos_id,
-                sender: {
-                    id: senderId,
-                    name: senderName,
-                },
-                media,
-                media_type: sosType === 1 ? "image" : "video",
-                created: utils.formatDate(new Date()),
-                created_at: utils.formatDate(new Date()),
-                country,
-                location,
-                time,
-                lat,
-                lng,
-                platform_type,
-            };
+    // for (const [userId, webSocketSet] of clients.entries()) {
+    //     const relevantAgent = agents.find(agent => agent.user_id === userId);
 
-            for (const client of webSocketSet) {
-                if (client.readyState === WebSocketServer.OPEN) {
-                    client.send(JSON.stringify(payload));
-                }
-            }
-        }
-    }
+    //     if (relevantAgent) {
+    //         const payload = {
+    //             type: "sos",
+    //             id: sos_id,
+    //             sender: {
+    //                 id: senderId,
+    //                 name: senderName,
+    //             },
+    //             media,
+    //             media_type: sosType === 1 ? "image" : "video",
+    //             created: utils.formatDate(new Date()),
+    //             created_at: utils.formatDate(new Date()),
+    //             country,
+    //             location,
+    //             time,
+    //             lat,
+    //             lng,
+    //             platform_type,
+    //         };
+
+    //         for (const client of webSocketSet) {
+    //             if (client.readyState === WebSocketServer.OPEN) {
+    //                 client.send(JSON.stringify(payload));
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 async function handleUserResolvedSos(message) {
