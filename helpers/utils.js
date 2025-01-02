@@ -71,7 +71,7 @@ module.exports = {
     },
 
     time: () => {
-        return moment().locale('id').format('H:mm')
+        return moment().locale('id').format('HH:mm')
     },
 
     formatDateByName: (date) => {
