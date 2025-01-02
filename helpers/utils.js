@@ -70,6 +70,10 @@ module.exports = {
         return moment(date).locale('id').format('yyyy/MM/DD H:mm:ss')
     },
 
+    time: () => {
+        return moment().locale('id').format('H:mm')
+    },
+
     formatDateByName: (date) => {
         return moment(date).locale('id').format('DD MMMM YYYY')
     },

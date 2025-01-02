@@ -112,12 +112,14 @@ async function handleLeave(ws, message) {
 }
 
 async function handleSos(message) {
-    const { sos_id, user_id, media, ext, location, lat, lng, country, time, platform_type } = message;
+    const { sos_id, user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
     const continent = utils.countryCompareContinent("Japan");
     const agents = await Agent.userAgent(continent);
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
+
+    const time = utils.time();
 
     const checkIsSosProcess = await Sos.checkIsSosProccess(user_id);
 
