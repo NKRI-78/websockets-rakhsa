@@ -242,7 +242,7 @@ async function handleMessage(message) {
             id: senderId,
         },
         is_read: false,
-        sent_time: utils.formatTime(),
+        sent_time: utils.formatTime(created_at),
         text: text,
         type: "text",
     };

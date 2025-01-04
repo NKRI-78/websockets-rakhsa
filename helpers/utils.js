@@ -46,8 +46,8 @@ module.exports = {
         return moment(date).tz("Asia/Jakarta").format('dddd, d MMMM YYYY')
     },
 
-    formatTime() {
-        return moment().format('HH:mm')
+    formatTime(date) {
+        return moment(date).format('HH:mm')
     },
 
     formatDateTimeAgo (date) {
