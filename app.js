@@ -10,6 +10,8 @@ const User = require("./models/User");
 const Agent = require("./models/Agent");
 const utils = require("./helpers/utils");
 
+const moment = require('moment-timezone')
+
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer.Server({ server });
@@ -149,8 +151,8 @@ async function handleSos(message) {
                 },
                 media,
                 media_type: sosType === 1 ? "image" : "video",
-                created: utils.formatDate(new Date()),
-                created_at: utils.formatDate(new Date()),
+                created: moment().format('yyyy-MM-DD'),
+                created_at: moment().format('yyyy-MM-DD'),
                 country,
                 location,
                 time,
