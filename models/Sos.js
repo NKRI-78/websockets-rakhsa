@@ -50,7 +50,7 @@ module.exports = {
         })
     },
 
-    checkIsSosProccess: (userId) => {
+    checkIsSosIdle: (userId) => {
         return new Promise((resolve, reject) => {
             const query = `SELECT uid FROM sos WHERE user_id = ? AND sos_activity_type = 1`
 

@@ -114,7 +114,7 @@ async function handleLeave(ws, message) {
 }
 
 async function handleSos(message) {
-    const { sos_id, user_id, media, ext, location, lat, lng, country, platform_type } = message;
+    const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
     const continent = utils.countryCompareContinent("Japan");
     const agents = await Agent.userAgent(continent);
@@ -123,14 +123,23 @@ async function handleSos(message) {
 
     const time = utils.time();
 
-    const checkIsSosProcess = await Sos.checkIsSosProccess(user_id);
+    const checkIsSosIdle = await Sos.checkIsSosIdle(user_id);
 
-    if(checkIsSosProcess.length == 0) {
-        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    var sosId = uuidv4();
+    var sosIdNew = uuidv4();
+
+    if(checkIsSosIdle.length == 0) {
+        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
     } else {
-        const existingSosId = checkIsSosProcess[0].uid;
-        await Sos.broadcast(sos_id, user_id, location, media, sosType, lat, lng, country, time, platformType);
-        await Sos.updateBroadcast(existingSosId, time);
+
+        // UPDATE TO CLOSED BY SYSTEM
+        const updateSosId = checkIsSosIdle[0].uid;
+        await Sos.updateBroadcast(updateSosId, time);
+
+        sosId = sosIdNew;
+
+        // AND CREATE NEW SOS
+        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
     }
 
     const dataGetProfile = { user_id };
@@ -144,7 +153,7 @@ async function handleSos(message) {
         if (relevantAgent) {
             const payload = {
                 type: "sos",
-                id: sos_id,
+                id: sosId,
                 sender: {
                     id: senderId,
                     name: senderName,
