@@ -224,6 +224,10 @@ async function handleMessage(message) {
         User.getProfile({ user_id: recipient }),
     ]);
 
+    const getChat = Chat.getChat(chat_id);
+
+    const sosId = getChat.length == 0 ? "-" : getChat[0].sos_id;
+
     const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id;
     const senderName = userSenders.length === 0 ? "-" : userSenders[0].username;
     const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar;
@@ -290,7 +294,11 @@ async function handleMessage(message) {
     }
     messageQueue.get(recipient).push(messageData);
 
-    await utils.sendFCM(senderName, text, token, "send-msg");
+    await utils.sendFCM(senderName, text, token, "chat", {
+        chat_id: chat_id,
+        recipient_id: recipientId,
+        sos_id: sosId
+    });
 }
 
 async function deliverQueuedMessages(recipientSocket, recipientId) {

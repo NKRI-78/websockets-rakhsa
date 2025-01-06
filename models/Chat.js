@@ -96,6 +96,22 @@ module.exports = {
         })
     },
 
+    getChat: (chatId) => {
+        return new Promise ((resolve, reject) => {
+            const query = `SELECT sos_id
+            FROM chats
+            WHERE uid = ?`
+
+            conn.query(query, [chatId], (e, result) => {
+                if(e) {
+                    reject(new Error(e))
+                } else {
+                    resolve(result)
+                }
+            })
+        })
+    },
+
     getUsers: (userId) => {
         return new Promise ((resolve, reject) => {
             const query = `SELECT u.uid, u.image, u.name, ut.token, u.is_online, u.last_active 
