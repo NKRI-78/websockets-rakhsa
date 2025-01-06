@@ -98,12 +98,15 @@ module.exports = {
         .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/)
     },
 
-    sendFCM: async (title, body, token, type) => {
+    sendFCM: async (title, body, token, type, data) => {
         await axios.post('https://api-fcm.inovatiftujuh8.com/api/v1/firebase/fcm', {
             token: token,
             title: title,
             body: body,
-            broadcast_type: type
+            broadcast_type: type,
+            chat_id: data.chat_id,
+            recipient_id: data.recipient_id,
+            sos_id: data.sos_id           
         })
     },
 
