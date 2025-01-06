@@ -36,6 +36,9 @@ wss.on("connection", (ws, _) => {
             case 'user-resolved-sos':
                 handleUserResolvedSos(parsedMessage);
                 break;
+            case 'user-closed-sos':
+                handleUserClosedSos(parseMessage);
+                break;
             case 'message': 
                 handleMessage(parsedMessage); 
                 break;
@@ -177,6 +180,10 @@ async function handleSos(message) {
             }
         }
     }
+}
+
+async function handleUserClosedSos(message) {
+    const { } = message
 }
 
 async function handleUserResolvedSos(message) {
