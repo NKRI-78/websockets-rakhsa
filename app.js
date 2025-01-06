@@ -219,6 +219,10 @@ async function handleAgentConfirmedSos(message) {
     const chats = await Chat.getChatBySosId(sos_id);
 
     const chatId = chats.length === 0 ? "-" : chats[0].uid;
+    
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set());
+    }
 
     const sender = user_id_agent;
     const recipient = sos.length === 0 ? "-" : sos[0].user_id;
