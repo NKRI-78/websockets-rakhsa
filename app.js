@@ -36,8 +36,8 @@ wss.on("connection", (ws, _) => {
             case 'user-resolved-sos':
                 handleUserResolvedSos(parsedMessage);
                 break;
-            case 'user-closed-sos':
-                handleUserClosedSos(parseMessage);
+            case 'agent-closed-sos':
+                handleAgentClosedSos(parsedMessage);
                 break;
             case 'message': 
                 handleMessage(parsedMessage); 
@@ -182,8 +182,31 @@ async function handleSos(message) {
     }
 }
 
-async function handleUserClosedSos(message) {
-    const { } = message
+async function handleAgentClosedSos(message) {
+    const { sos_id, note } = message;
+
+    const sos = await Sos.findById(sos_id);
+    const chats = await Chat.getChatBySosId(sos_id);
+
+    const chatId = chats.length === 0 ? "-" : chats[0].uid;
+
+    const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
+    const recipient = sos.length === 0 ? "-" : sos[0].user_id;
+
+    const senderConnections = clients.get(sender) || new Set();
+    const recipientConnections = clients.get(recipient) || new Set();
+
+    senderConnections.forEach(conn => rooms.get(chatId).add(conn));
+    recipientConnections.forEach(conn => rooms.get(chatId).add(conn));
+
+    rooms.get(chatId).forEach(conn => {
+        if (conn.readyState === WebSocketServer.OPEN) {
+            conn.send(JSON.stringify({
+                type: "closed-by-agent",
+                note: note
+            }));
+        }
+    });
 }
 
 async function handleUserResolvedSos(message) {
