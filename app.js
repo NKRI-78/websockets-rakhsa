@@ -231,7 +231,7 @@ async function handleMessage(message) {
         User.getProfile({ user_id: recipient }),
     ]);
 
-    const getChat = Chat.getChat(chat_id);
+    const getChat = await Chat.getChat(chat_id);
 
     const sosId = getChat.length == 0 ? "-" : getChat[0].sos_id;
 
