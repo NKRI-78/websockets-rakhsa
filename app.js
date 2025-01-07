@@ -192,6 +192,10 @@ async function handleAgentClosedSos(message) {
     const chats = await Chat.getChatBySosId(sos_id);
 
     const chatId = chats.length === 0 ? "-" : chats[0].uid;
+        
+    if (!rooms.has(chatId)) {
+        rooms.set(chatId, new Set());
+    }
 
     const sender = sos.length === 0 ? "-" : sos[0].user_agent_id;
     const recipient = sos.length === 0 ? "-" : sos[0].user_id;
