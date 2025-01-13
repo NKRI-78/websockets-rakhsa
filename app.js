@@ -242,6 +242,7 @@ async function handleAgentConfirmedSos(message) {
             conn.send(JSON.stringify({
                 type: "confirmed-by-agent",
                 sos_id: sos_id,
+                sender: recipient,
                 recipient_id: sender,
                 chat_id: chatId
             }));
