@@ -280,6 +280,7 @@ async function handleUserResolvedSos(message) {
             conn.send(JSON.stringify({
                 type: "resolved-by-user",
                 sos_id: sos_id,
+                chat_id: chatId,
                 text: `${recipientName} telah menyatakan kasus telah selesai`
             }));
         }
