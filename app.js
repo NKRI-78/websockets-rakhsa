@@ -140,7 +140,7 @@ async function handleSos(message) {
 
         // UPDATE TO CLOSED BY SYSTEM
         const updateSosId = checkIsSosIdle[0].uid;
-        await Sos.updateBroadcast(updateSosId, user_id, time);
+        await Sos.updateBroadcast(updateSosId, user_id);
 
         sosId = sosIdNew;
 
