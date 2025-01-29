@@ -149,7 +149,7 @@ async function handleSos(message) {
         await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
     } else {
         const updateSosId = checkIsSosIdle[0].uid;
-        await retryOperation(() => Sos.updateBroadcast(updateSosId, time));
+        await retryOperation(() => Sos.updateBroadcast(updateSosId, user_id));
 
         sosId = sosIdNew;
         await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
@@ -284,6 +284,7 @@ async function handleUserResolvedSos(message) {
             conn.send(JSON.stringify({
                 type: "resolved-by-user",
                 sos_id: sos_id,
+                chat_id: chatId,
                 text: `${recipientName} telah menyatakan kasus telah selesai`
             }));
         }
