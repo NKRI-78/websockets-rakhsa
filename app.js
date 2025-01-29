@@ -119,37 +119,44 @@ async function handleLeave(ws, message) {
     }
 }
 
+async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            console.error(`Attempt ${attempt} failed:`, error);
+            if (attempt === maxRetries) throw error;
+            await new Promise(res => setTimeout(res, delay));
+        }
+    }
+}
+
 async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
     const continent = utils.countryCompareContinent("Japan");
-    const agents = await Agent.userAgent(continent);
+    const agents = await retryOperation(() => Agent.userAgent(continent));
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
 
     const time = utils.time();
+    const checkIsSosIdle = await retryOperation(() => Sos.checkIsSosIdle(user_id));
 
-    const checkIsSosIdle = await Sos.checkIsSosIdle(user_id);
+    let sosId = uuidv4();
+    let sosIdNew = uuidv4();
 
-    var sosId = uuidv4();
-    var sosIdNew = uuidv4();
-
-    if(checkIsSosIdle.length == 0) {
-        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    if (checkIsSosIdle.length === 0) {
+        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
     } else {
-
-        // UPDATE TO CLOSED BY SYSTEM
         const updateSosId = checkIsSosIdle[0].uid;
-        await Sos.updateBroadcast(updateSosId, time);
+        await retryOperation(() => Sos.updateBroadcast(updateSosId, time));
 
         sosId = sosIdNew;
-
-        // AND CREATE NEW SOS
-        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
+        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
     }
 
     const dataGetProfile = { user_id };
-    const sender = await User.getProfile(dataGetProfile);
+    const sender = await retryOperation(() => User.getProfile(dataGetProfile));
     const senderName = sender.length === 0 ? "-" : sender[0].username;
     const senderId = user_id;
 
@@ -160,14 +167,11 @@ async function handleSos(message) {
             const payload = {
                 type: "sos",
                 id: sosId,
-                sender: {
-                    id: senderId,
-                    name: senderName,
-                },
+                sender: { id: senderId, name: senderName },
                 media,
                 media_type: sosType === 1 ? "image" : "video",
-                created: moment().format('yyyy-MM-DD'),
-                created_at: moment().format('yyyy-MM-DD'),
+                created: moment().format('YYYY-MM-DD'),
+                created_at: moment().format('YYYY-MM-DD'),
                 country,
                 location,
                 time,
@@ -178,7 +182,7 @@ async function handleSos(message) {
 
             for (const client of webSocketSet) {
                 if (client.readyState === WebSocketServer.OPEN) {
-                    client.send(JSON.stringify(payload));
+                    await retryOperation(() => client.send(JSON.stringify(payload)));
                 }
             }
         }
