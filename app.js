@@ -161,9 +161,9 @@ async function handleSos(message) {
     const senderId = user_id;
 
     for (const [_, webSocketSet] of clients.entries()) {
-    //     const relevantAgent = agents.find(agent => agent.user_id === userId);
+        // const relevantAgent = agents.find(agent => agent.user_id === userId);
 
-    //  if (relevantAgent) {
+        //  if (relevantAgent) {
         const payload = {
             type: "sos",
             id: sosId,
