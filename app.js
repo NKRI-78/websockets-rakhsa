@@ -16,6 +16,8 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer.Server({ server });
 
+const sosQueue = [];
+
 const clients = new Map();
 const messageQueue = new Map();
 const rooms = new Map();
@@ -131,6 +133,13 @@ async function retryOperation(operation, maxRetries = 3, delay = 1000) {
     }
 }
 
+async function processQueue() {
+    while (sosQueue.length > 0) {
+        const message = sosQueue.shift();
+        await handleSos(message); 
+    }
+}
+
 async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
@@ -145,25 +154,23 @@ async function handleSos(message) {
     let sosId = uuidv4();
     let sosIdNew = uuidv4();
 
-    if (checkIsSosIdle.length === 0) {
-        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
-    } else {
-        const updateSosId = checkIsSosIdle[0].uid;
-        await retryOperation(() => Sos.updateBroadcast(updateSosId, user_id));
+    try {
 
-        sosId = sosIdNew;
-        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
-    }
+        if (checkIsSosIdle.length === 0) {
+            await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
+        } else {
+            const updateSosId = checkIsSosIdle[0].uid;
+            await retryOperation(() => Sos.updateBroadcast(updateSosId, user_id));
 
-    const dataGetProfile = { user_id };
-    const sender = await retryOperation(() => User.getProfile(dataGetProfile));
-    const senderName = sender.length === 0 ? "-" : sender[0].username;
-    const senderId = user_id;
+            sosId = sosIdNew;
+            await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
+        }
 
-    for (const [_, webSocketSet] of clients.entries()) {
-        // const relevantAgent = agents.find(agent => agent.user_id === userId);
+        const dataGetProfile = { user_id };
+        const sender = await retryOperation(() => User.getProfile(dataGetProfile));
+        const senderName = sender.length === 0 ? "-" : sender[0].username;
+        const senderId = user_id;
 
-        //  if (relevantAgent) {
         const payload = {
             type: "sos",
             id: sosId,
@@ -183,14 +190,19 @@ async function handleSos(message) {
             platform_type,
         };
 
-        for (const client of webSocketSet) {
-            if (client.readyState === WebSocketServer.OPEN) {
-                client.send(JSON.stringify(payload));
+        for (const socketSet of clients.values()) {
+            for (const socket of socketSet) {
+                socket.send(JSON.stringify(payload));
             }
         }
-        // }
+
+    } catch(e) {
+        console.error("Failed to send SOS, adding to queue:", e);
+        if (!fromQueue) sosQueue.push(payload);
     }
 }
+
+setInterval(processQueue, 3000);
 
 async function handleAgentClosedSos(message) {
     const { sos_id, note } = message;
