@@ -75,11 +75,11 @@ wss.on("connection", (ws, _) => {
 
 const interval = setInterval(function ping() {
     wss.clients.forEach(function each(ws) {
-        if (ws.isAlive === false) return ws.terminate();
+    if (ws.isAlive === false) return ws.terminate();
         ws.isAlive = false;
         ws.ping();
     });
-}, 10000);
+}, 3000);
 
 async function handleJoin(ws, message) {
     const { user_id } = message;
@@ -143,10 +143,8 @@ async function processQueue() {
 async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
-    // const continent = utils.countryCompareContinent("Japan");
-    // const agents = await Agent.userAgent(continent);
     const sosType = ext === "jpg" ? 1 : 2;
-    const platformType = platform_type === "raksha" ? 1 : 2;
+    const platformType = "raksha";
 
     const time = utils.time();
     const checkIsSosIdle = await retryOperation(() => Sos.checkIsSosIdle(user_id));
