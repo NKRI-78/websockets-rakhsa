@@ -7,7 +7,7 @@ const express = require('express');
 const Chat = require("./models/Chat");
 const Sos = require("./models/Sos");
 const User = require("./models/User");
-const Agent = require("./models/Agent");
+// const Agent = require("./models/Agent");
 const utils = require("./helpers/utils");
 
 const moment = require('moment-timezone')
@@ -119,6 +119,18 @@ async function handleLeave(ws, message) {
     }
 }
 
+async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            console.error(`Attempt ${attempt} failed:`, error);
+            if (attempt === maxRetries) throw error;
+            await new Promise(res => setTimeout(res, delay));
+        }
+    }
+}
+
 async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
@@ -128,28 +140,23 @@ async function handleSos(message) {
     const platformType = platform_type === "raksha" ? 1 : 2;
 
     const time = utils.time();
+    const checkIsSosIdle = await retryOperation(() => Sos.checkIsSosIdle(user_id));
 
-    const checkIsSosIdle = await Sos.checkIsSosIdle(user_id);
+    let sosId = uuidv4();
+    let sosIdNew = uuidv4();
 
-    var sosId = uuidv4();
-    var sosIdNew = uuidv4();
-
-    if(checkIsSosIdle.length == 0) {
-        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
+    if (checkIsSosIdle.length === 0) {
+        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
     } else {
-
-        // UPDATE TO CLOSED BY SYSTEM
         const updateSosId = checkIsSosIdle[0].uid;
-        await Sos.updateBroadcast(updateSosId, user_id);
+        await retryOperation(() => Sos.updateBroadcast(updateSosId, user_id));
 
         sosId = sosIdNew;
-
-        // AND CREATE NEW SOS
-        await Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType);
+        await retryOperation(() => Sos.broadcast(sosId, user_id, location, media, sosType, lat, lng, country, time, platformType));
     }
 
     const dataGetProfile = { user_id };
-    const sender = await User.getProfile(dataGetProfile);
+    const sender = await retryOperation(() => User.getProfile(dataGetProfile));
     const senderName = sender.length === 0 ? "-" : sender[0].username;
     const senderId = user_id;
 
