@@ -160,7 +160,7 @@ async function handleSos(message) {
     const senderName = sender.length === 0 ? "-" : sender[0].username;
     const senderId = user_id;
 
-    // for (const [userId, webSocketSet] of clients.entries()) {
+    for (const [_, webSocketSet] of clients.entries()) {
     //     const relevantAgent = agents.find(agent => agent.user_id === userId);
 
     //  if (relevantAgent) {
@@ -189,7 +189,7 @@ async function handleSos(message) {
             }
         }
         // }
-    // }
+    }
 }
 
 async function handleAgentClosedSos(message) {
