@@ -122,8 +122,8 @@ async function handleLeave(ws, message) {
 async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
-    const continent = utils.countryCompareContinent("Japan");
-    const agents = await Agent.userAgent(continent);
+    // const continent = utils.countryCompareContinent("Japan");
+    // const agents = await Agent.userAgent(continent);
     const sosType = ext === "jpg" ? 1 : 2;
     const platformType = platform_type === "raksha" ? 1 : 2;
 
@@ -153,36 +153,36 @@ async function handleSos(message) {
     const senderName = sender.length === 0 ? "-" : sender[0].username;
     const senderId = user_id;
 
-    for (const [userId, webSocketSet] of clients.entries()) {
-        const relevantAgent = agents.find(agent => agent.user_id === userId);
+    // for (const [userId, webSocketSet] of clients.entries()) {
+    //     const relevantAgent = agents.find(agent => agent.user_id === userId);
 
-        if (relevantAgent) {
-            const payload = {
-                type: "sos",
-                id: sosId,
-                sender: {
-                    id: senderId,
-                    name: senderName,
-                },
-                media,
-                media_type: sosType === 1 ? "image" : "video",
-                created: moment().format('yyyy-MM-DD'),
-                created_at: moment().format('yyyy-MM-DD'),
-                country,
-                location,
-                time,
-                lat,
-                lng,
-                platform_type,
-            };
+    //  if (relevantAgent) {
+        const payload = {
+            type: "sos",
+            id: sosId,
+            sender: {
+                id: senderId,
+                name: senderName,
+            },
+            media,
+            media_type: sosType === 1 ? "image" : "video",
+            created: moment().format('yyyy-MM-DD'),
+            created_at: moment().format('yyyy-MM-DD'),
+            country,
+            location,
+            time,
+            lat,
+            lng,
+            platform_type,
+        };
 
-            for (const client of webSocketSet) {
-                if (client.readyState === WebSocketServer.OPEN) {
-                    client.send(JSON.stringify(payload));
-                }
+        for (const client of webSocketSet) {
+            if (client.readyState === WebSocketServer.OPEN) {
+                client.send(JSON.stringify(payload));
             }
         }
-    }
+        // }
+    // }
 }
 
 async function handleAgentClosedSos(message) {
