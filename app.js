@@ -188,11 +188,20 @@ async function handleSos(message) {
             platform_type,
         };
 
-        for (const socketSet of clients.values()) {
-            for (const socket of socketSet) {
-                socket.send(JSON.stringify(payload));
-            }
-        }
+        // for (const socketSet of clients.values()) {
+        //     for (const socket of socketSet) {
+        //         socket.send(JSON.stringify(payload));
+        //     }
+        // }
+
+        // 🔥 Broadcast to **all connected users**
+        clients.forEach((connections) => {
+            connections.forEach((conn) => {
+                if (conn.readyState === WebSocket.OPEN) {
+                    conn.send(JSON.stringify(payload));
+                }
+            });
+        });
 
     } catch(e) {
         console.error("Failed to send SOS, adding to queue:", e);
