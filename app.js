@@ -270,7 +270,13 @@ async function handleAgentConfirmedSos(message) {
     clients.forEach((connections) => {
         connections.forEach((conn) => {
             if (conn.readyState === WebSocket.OPEN) {
-                conn.send(messagePayload);
+                conn.send(JSON.stringify({
+                    type: "confirmed-by-agent",
+                    sos_id: sos_id,
+                    sender: recipient,
+                    recipient_id: sender,
+                    chat_id: chatId
+                }));
             }
         });
     });
