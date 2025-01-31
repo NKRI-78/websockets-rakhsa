@@ -254,16 +254,25 @@ async function handleAgentConfirmedSos(message) {
     senderConnections.forEach(conn => rooms.get(chatId).add(conn));
     recipientConnections.forEach(conn => rooms.get(chatId).add(conn));
 
-    rooms.get(chatId).forEach(conn => {
-        if (conn.readyState === WebSocketServer.OPEN) {
-            conn.send(JSON.stringify({
-                type: "confirmed-by-agent",
-                sos_id: sos_id,
-                sender: recipient,
-                recipient_id: sender,
-                chat_id: chatId
-            }));
-        }
+    // rooms.get(chatId).forEach(conn => {
+    //     if (conn.readyState === WebSocketServer.OPEN) {
+    //         conn.send(JSON.stringify({
+    //             type: "confirmed-by-agent",
+    //             sos_id: sos_id,
+    //             sender: recipient,
+    //             recipient_id: sender,
+    //             chat_id: chatId
+    //         }));
+    //     }
+    // });
+
+    // 🔥 Broadcast to **all connected users**
+    clients.forEach((connections) => {
+        connections.forEach((conn) => {
+            if (conn.readyState === WebSocket.OPEN) {
+                conn.send(messagePayload);
+            }
+        });
     });
 }
 
