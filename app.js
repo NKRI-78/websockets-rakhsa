@@ -144,7 +144,7 @@ async function handleSos(message) {
     const { user_id, media, ext, location, lat, lng, country, platform_type } = message;
 
     const sosType = ext === "jpg" ? 1 : 2;
-    const platformType = "raksha";
+    const platformType = 1;
 
     const time = utils.time();
     const checkIsSosIdle = await retryOperation(() => Sos.checkIsSosIdle(user_id));
