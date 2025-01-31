@@ -197,7 +197,7 @@ async function handleSos(message) {
         // 🔥 Broadcast to **all connected users**
         clients.forEach((connections) => {
             connections.forEach((conn) => {
-                if (conn.readyState === WebSocket.OPEN) {
+                if (conn.readyState === WebSocketServer.OPEN) {
                     conn.send(JSON.stringify(payload));
                 }
             });
@@ -278,7 +278,7 @@ async function handleAgentConfirmedSos(message) {
     // 🔥 Broadcast to **all connected users**
     clients.forEach((connections) => {
         connections.forEach((conn) => {
-            if (conn.readyState === WebSocket.OPEN) {
+            if (conn.readyState === WebSocketServer.OPEN) {
                 conn.send(JSON.stringify({
                     type: "confirmed-by-agent",
                     sos_id: sos_id,
