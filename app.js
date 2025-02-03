@@ -394,24 +394,46 @@ async function handleMessage(message) {
     clients.get(recipient).forEach(conn => rooms.get(chat_id).add(conn));
 
     // Broadcast message to all connections in the chat room
-    rooms.get(chat_id).forEach(conn => {
-        if (conn.readyState === WebSocketServer.OPEN) {
-            const isSender = clients.get(sender)?.has(conn);
-            const isRecipient = clients.get(recipient)?.has(conn);
+    // rooms.get(chat_id).forEach(conn => {
+    //     if (conn.readyState === WebSocketServer.OPEN) {
+    //         const isSender = clients.get(sender)?.has(conn);
+    //         const isRecipient = clients.get(recipient)?.has(conn);
 
-            conn.send(JSON.stringify({
-                type: "fetch-message",
-                data: {
-                    ...messageData,
-                    user: {
-                        id: isRecipient ? recipientId : senderId,
-                        name: isRecipient ? recipientName : senderName,
-                        avatar: isRecipient ? recipientAvatar : senderAvatar,
-                        is_me: isSender, // Ensure sender sees message as "me"
+    //         conn.send(JSON.stringify({
+    //             type: "fetch-message",
+    //             data: {
+    //                 ...messageData,
+    //                 user: {
+    //                     id: isRecipient ? recipientId : senderId,
+    //                     name: isRecipient ? recipientName : senderName,
+    //                     avatar: isRecipient ? recipientAvatar : senderAvatar,
+    //                     is_me: isSender, // Ensure sender sees message as "me"
+    //                 },
+    //             },
+    //         }));
+    //     }
+    // });
+
+    clients.forEach((connections) => {
+        connections.forEach((conn) => {
+            if (conn.readyState === WebSocketServer.OPEN) {
+                const isSender = clients.get(sender)?.has(conn);
+                const isRecipient = clients.get(recipient)?.has(conn);
+
+                conn.send(JSON.stringify({
+                    type: "fetch-message",
+                    data: {
+                        ...messageData,
+                        user: {
+                            id: isRecipient ? recipientId : senderId,
+                            name: isRecipient ? recipientName : senderName,
+                            avatar: isRecipient ? recipientAvatar : senderAvatar,
+                            is_me: isSender,
+                        },
                     },
-                },
-            }));
-        }
+                }));
+            }
+        });
     });
 
     // Store message in recipient's message queue
