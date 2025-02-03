@@ -147,6 +147,7 @@ async function handleSos(message) {
     const platformType = 1;
 
     const time = utils.time();
+    
     const checkIsSosIdle = await retryOperation(() => Sos.checkIsSosIdle(user_id));
 
     let sosId = uuidv4();
@@ -332,31 +333,37 @@ async function handleMessage(message) {
     const { chat_id, sender, recipient, text, created_at } = message;
     const msgId = uuidv4();
 
+    // Fetch sender and recipient profiles
     const [userSenders, userRecipients] = await Promise.all([
         User.getProfile({ user_id: sender }),
         User.getProfile({ user_id: recipient }),
     ]);
 
+    // Fetch chat details
     const getChat = await Chat.getChat(chat_id);
+    const sosId = getChat.length === 0 ? "-" : getChat[0].sos_id;
 
-    const sosId = getChat.length == 0 ? "-" : getChat[0].sos_id;
-
+    // Sender details
     const senderId = userSenders.length === 0 ? "-" : userSenders[0].user_id;
     const senderName = userSenders.length === 0 ? "-" : userSenders[0].username;
     const senderAvatar = userSenders.length === 0 ? "-" : userSenders[0].avatar;
 
+    // Recipient details
     const recipientId = userRecipients.length === 0 ? "-" : userRecipients[0].user_id;
     const recipientName = userRecipients.length === 0 ? "-" : userRecipients[0].username;
     const recipientAvatar = userRecipients.length === 0 ? "-" : userRecipients[0].avatar;
 
+    // Insert message into DB
     await Chat.insertMessage(msgId, chat_id, sender, recipient, text, created_at);
 
+    // Get recipient FCM token
     const fcms = await User.getFcm({ user_id: recipientId });
     const token = fcms.length === 0 ? "-" : fcms[0].token;
 
+    // Prepare message data
     const messageData = {
         id: msgId,
-        chat_id: chat_id,
+        chat_id,
         pair_room: recipient,
         user: {
             id: recipientId,
@@ -369,23 +376,28 @@ async function handleMessage(message) {
         },
         is_read: false,
         sent_time: utils.formatTime(created_at),
-        text: text,
+        text,
         type: "text",
     };
 
+    // Ensure chat room exists
     if (!rooms.has(chat_id)) {
         rooms.set(chat_id, new Set());
     }
 
-    const senderConnections = clients.get(sender) || new Set();
-    const recipientConnections = clients.get(recipient) || new Set();
+    // Ensure sender and recipient are registered in clients
+    if (!clients.has(sender)) clients.set(sender, new Set());
+    if (!clients.has(recipient)) clients.set(recipient, new Set());
 
-    senderConnections.forEach(conn => rooms.get(chat_id).add(conn));
-    recipientConnections.forEach(conn => rooms.get(chat_id).add(conn));
+    // Add sender and recipient connections to the chat room
+    clients.get(sender).forEach(conn => rooms.get(chat_id).add(conn));
+    clients.get(recipient).forEach(conn => rooms.get(chat_id).add(conn));
 
+    // Broadcast message to all connections in the chat room
     rooms.get(chat_id).forEach(conn => {
         if (conn.readyState === WebSocketServer.OPEN) {
-            const isRecipient = Array.from(clients.get(recipient) || []).includes(conn);
+            const isSender = clients.get(sender)?.has(conn);
+            const isRecipient = clients.get(recipient)?.has(conn);
 
             conn.send(JSON.stringify({
                 type: "fetch-message",
@@ -395,20 +407,22 @@ async function handleMessage(message) {
                         id: isRecipient ? recipientId : senderId,
                         name: isRecipient ? recipientName : senderName,
                         avatar: isRecipient ? recipientAvatar : senderAvatar,
-                        is_me: !isRecipient,
+                        is_me: isSender, // Ensure sender sees message as "me"
                     },
                 },
             }));
         }
     });
 
+    // Store message in recipient's message queue
     if (!messageQueue.has(recipient)) {
         messageQueue.set(recipient, []);
     }
     messageQueue.get(recipient).push(messageData);
 
+    // Send push notification
     await utils.sendFCM(senderName, text, token, "chat", {
-        chat_id: chat_id,
+        chat_id,
         recipient_id: recipientId,
         sos_id: sosId
     });
